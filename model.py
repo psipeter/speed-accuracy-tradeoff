@@ -2,42 +2,58 @@ import numpy as np
 import nengo
 
 class Inputs():
-    def __init__(self, deltaP, maxCues, seed=0):
+    def __init__(self, deltaP, maxCues, seed=0, empirical=None):
         self.deltaP = deltaP  # task difficulty
         self.maxCues = maxCues  # maximum number of cues presented per trial
         self.correct = None  # correct choice for this trial
+        self.empirical = empirical
         self.pA = None
         self.pB = None
         self.As = [0]
         self.Bs = [0]
         self.rng = np.random.RandomState(seed=seed)
-    def set_AB(self):
-        self.correct = "A" if self.rng.rand()<0.5 else "B"
-        highs = np.arange(0.1+self.deltaP, 0.9, 0.1)
-        Pcorrect = highs[self.rng.randint(len(highs))]  # sample probability for the correct option
-        Pincorrect = Pcorrect - self.deltaP  # sample probability for the incorrect option (P_incorrect = P_correct - deltaP)
-        nUpCorrect = int(Pcorrect*self.maxCues)  # number of "up" cues for the correct option
-        nUpIncorrect = int(Pincorrect*self.maxCues)  # number of "up" cues for the incorrect option
+    def set_AB(self, trial=None):
         self.As = np.zeros((self.maxCues))  # all cues for option A
         self.Bs = np.zeros((self.maxCues))  # all cues for option B
-        # populate A/B cue lists with "up" and "down" cues
-        if self.correct=="A":
-            self.As[:nUpCorrect] = 1
-            self.As[nUpCorrect:] = -1
-            self.Bs[:nUpIncorrect] = 1
-            self.Bs[nUpIncorrect:] = -1
-            self.pA = nUpCorrect / self.maxCues  # true ration of "up" cues for A
-            self.pB = nUpIncorrect / self.maxCues  # true ration of "up" cues for B
-        else:
-            self.Bs[:nUpCorrect] = 1
-            self.Bs[nUpCorrect:] = -1
-            self.As[:nUpIncorrect] = 1
-            self.As[nUpIncorrect:] = -1
-            self.pB = nUpCorrect / self.maxCues  # true ration of "up" cues for A
-            self.pA = nUpIncorrect / self.maxCues  # true ration of "up" cues for B
-        # randomize the order of A/B cue lists
-        self.rng.shuffle(self.As)
-        self.rng.shuffle(self.Bs)
+        if np.any(self.empirical):
+            # populate the A and B arrays with the samples actually drawn in the empirical trial
+            self.pA = self.empirical['pA'].to_numpy()[trial]
+            self.pB = self.empirical['pB'].to_numpy()[trial]
+            self.correct = "A" if self.pA > self.pB else "B"
+            empAs = list(str(self.empirical['A'].to_numpy()[trial]))
+            empAs = np.array([2*int(x)-1 for x in empAs])
+            empBs = list(str(self.empirical['B'].to_numpy()[trial]))
+            empBs = np.array([2*int(x)-1 for x in empBs])
+            self.As[:len(empAs)] = empAs
+            self.Bs[:len(empBs)] = empBs
+            # fill out the remaining cues with randomly generated cues
+            self.As[len(empAs):] = 2*self.rng.randint(2, size=self.maxCues-len(empAs))-1
+            self.Bs[len(empBs):] = 2*self.rng.randint(2, size=self.maxCues-len(empBs))-1
+        else:                
+            self.correct = "A" if self.rng.rand()<0.5 else "B"
+            highs = np.arange(0.1+self.deltaP, 0.9, 0.1)
+            Pcorrect = highs[self.rng.randint(len(highs))]  # sample probability for the correct option
+            Pincorrect = Pcorrect - self.deltaP  # sample probability for the incorrect option (P_incorrect = P_correct - deltaP)
+            nUpCorrect = int(Pcorrect*self.maxCues)  # number of "up" cues for the correct option
+            nUpIncorrect = int(Pincorrect*self.maxCues)  # number of "up" cues for the incorrect option
+            # populate A/B cue lists with "up" and "down" cues
+            if self.correct=="A":
+                self.As[:nUpCorrect] = 1
+                self.As[nUpCorrect:] = -1
+                self.Bs[:nUpIncorrect] = 1
+                self.Bs[nUpIncorrect:] = -1
+                self.pA = nUpCorrect / self.maxCues  # true ration of "up" cues for A
+                self.pB = nUpIncorrect / self.maxCues  # true ration of "up" cues for B
+            else:
+                self.Bs[:nUpCorrect] = 1
+                self.Bs[nUpCorrect:] = -1
+                self.As[:nUpIncorrect] = 1
+                self.As[nUpIncorrect:] = -1
+                self.pB = nUpCorrect / self.maxCues  # true ration of "up" cues for A
+                self.pA = nUpIncorrect / self.maxCues  # true ration of "up" cues for B
+            # randomize the order of A/B cue lists
+            self.rng.shuffle(self.As)
+            self.rng.shuffle(self.Bs)
     def get_AB(self, t):
         # A presented for 500ms, then B presented for 500ms:
         # diplay x=[A[t], 0] if in first 500ms, and display x=[0, B[t]] if in the second 500ms
@@ -99,16 +115,16 @@ def build_network(inputs, nNeurons=1000, synapse=0.1, seed=0, tau=0, m=0.2, delt
     return net
 
 
-def run_once(deltaP, maxCues=12, seed=0, dt=0.001, **kwargs):
-    inputs = Inputs(deltaP=deltaP, maxCues=maxCues, seed=seed)
-    inputs.set_AB()
+def run_once(deltaP, maxCues=12, seed=0, dt=0.001, empirical=None, trial=None, progress_bar=False, **kwargs):
+    inputs = Inputs(deltaP=deltaP, maxCues=maxCues, seed=seed, empirical=empirical)
+    inputs.set_AB(trial=trial)
     net = build_network(inputs, seed=seed, **kwargs)
-    sim = nengo.Simulator(net, progress_bar=True)
+    sim = nengo.Simulator(net, progress_bar=progress_bar)
     chosen = False
     cues_sampled = 0
     with sim:
         while chosen==False and cues_sampled<=2*maxCues:
-            sim.run(0.5, progress_bar=True)
+            sim.run(0.5, progress_bar=progress_bar)
             chooseA = np.argwhere(sim.data[net.pAction][:,0] > 0)  # indices of time points when model was choosing A as action output
             chooseB = np.argwhere(sim.data[net.pAction][:,1] > 0)  # indices of time points when model was choosing B as action output
             if not chosen: cues_sampled += 1
@@ -121,8 +137,8 @@ def run_once(deltaP, maxCues=12, seed=0, dt=0.001, **kwargs):
         firstB = chooseB[0][0] if len(chooseB)>0 else int(maxCues/dt)  # first time point when model chose B
         choice = "A" if firstA < firstB else "B"
     else:  # if the model was forced to choose after sampling maxCues
-        valueA = sim.data[net.pAccumulate][-1][0]
-        valueB = sim.data[net.pAccumulate][-1][1]
+        valueA = sim.data[net.pAccumulator][-1][0]
+        valueB = sim.data[net.pAccumulator][-1][1]
         choice = "A" if valueA > valueB else "B"
     is_correct = True if choice==inputs.correct else False  
     return is_correct, cues_sampled

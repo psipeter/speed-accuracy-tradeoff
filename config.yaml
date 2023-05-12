@@ -1,0 +1,14 @@
+experimentName: fit_fast1
+maxExperimentDuration: 72h
+maxTrialNumber: 1000
+searchSpaceFile: params.json
+trainingService:
+  platform: local
+  useActiveGpu: false
+trialCodeDirectory: .
+trialCommand: python fit_params.py
+trialConcurrency: 8
+tuner:
+  classArgs:
+    optimize_mode: minimize
+  name: TPE
