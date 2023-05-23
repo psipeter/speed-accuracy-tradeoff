@@ -11,7 +11,10 @@
  - **dynamics.ipynb** plots Figures 2-3
  - **individual_behavior.py** plots Figure 4
 
-
+## Running
+ - edit start_fitting.py to specify the hyperparameter search
+ - run **python start_fitting.py** to generate the config and parameter files, and automatically start an NNI experiment in a subprocess
+ - OR comment out the last two lines in start_fitting.py, run it to generate the config and parameter files, then manually run **nnictl create --config config.yaml --port 8080** to start the NNI experiment
 
 
 
