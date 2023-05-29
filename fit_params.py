@@ -48,16 +48,16 @@ def objective(trial):
 
 if __name__ == '__main__':
 
-    mydb = mysql.connector.connect(host="localhost", user="root", password="0pHkVsqvDQ1E0OHk3Vhw")
-    mycursor = mydb.cursor()
+    mydb = mysql.connector.connect(host="localhost", user="generated_username", password="generated_password")
+    # mycursor = mydb.cursor()
     # mycursor.execute("CREATE DATABASE sql_test")
-    mycursor.execute("SHOW DATABASES")
-    for x in mycursor:
-        print(x)
+    # mycursor.execute("SHOW DATABASES")
+    # for x in mycursor:
+    #     print(x)
+    study = optuna.create_study(study_name="test", storage="sqlite:///generated_database_name.db", load_if_exists=True,
+        direction="minimize", pruner=optuna.pruners.MedianPruner())
 
     optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
-    study = optuna.create_study(study_name="test", storage="sqlite:///test.db", load_if_exists=True,
-        direction="minimize", pruner=optuna.pruners.MedianPruner())
     study.optimize(objective, n_trials=20, timeout=1000)
 
     best_params = study.best_params
