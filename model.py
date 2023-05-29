@@ -61,14 +61,23 @@ class Inputs():
         AB = [AB[0], 0] if t%1.0<0.5 else [0, AB[1]]  
         return AB
 
-
 def build_network(inputs, nNeurons=1000, synapse=0.1, seed=0, tau=0, m=0.2, delta=0, T=0.3):
     
     net = nengo.Network(seed=seed)
     net.config[nengo.Connection].synapse = 0.03
     net.config[nengo.Probe].synapse = 0.03
+
+    # references
+    net.tau = tau
+    net.m = m
+    net.delta = delta
+    net.T = T
+    net.inputs = inputs
+    net.seed = seed
+    net.synapse = synapse
+    net.nNeurons = nNeurons
     
-    func_input = lambda t: inputs.get_AB(t)
+    func_input = lambda t: net.inputs.get_AB(t)
     func_threshold = lambda t: T
     func_urgency = lambda t: -tau * t
     func_ramp = lambda x: synapse * m * x
@@ -106,24 +115,16 @@ def build_network(inputs, nNeurons=1000, synapse=0.1, seed=0, tau=0, m=0.2, delt
         net.pAccumulator = nengo.Probe(accumulator.output)
         net.pGate = nengo.Probe(gate)
         net.pAction = nengo.Probe(action.output)
-        # references
-        net.tau = tau
-        net.m = m
-        net.delta = delta
-        net.T = T
-        
+
     return net
 
 
-def run_once(deltaP, maxCues=12, seed=0, dt=0.001, empirical=None, trial=None, progress_bar=False, **kwargs):
-    inputs = Inputs(deltaP=deltaP, maxCues=maxCues, seed=seed, empirical=empirical)
-    inputs.set_AB(trial=trial)
-    net = build_network(inputs, seed=seed, **kwargs)
-    sim = nengo.Simulator(net, progress_bar=progress_bar)
+def run_once(net, dt=0.001, progress_bar=False):
+    sim = nengo.Simulator(net, seed=net.seed, progress_bar=progress_bar, optimize=False, dt=dt)
     chosen = False
     cues_sampled = 0
     with sim:
-        while chosen==False and cues_sampled<=2*maxCues:
+        while chosen==False and cues_sampled<=2*net.inputs.maxCues:
             sim.run(0.5, progress_bar=progress_bar)
             chooseA = np.argwhere(sim.data[net.pAction][:,0] > 0)  # indices of time points when model was choosing A as action output
             chooseB = np.argwhere(sim.data[net.pAction][:,1] > 0)  # indices of time points when model was choosing B as action output
@@ -133,12 +134,12 @@ def run_once(deltaP, maxCues=12, seed=0, dt=0.001, empirical=None, trial=None, p
     if chosen:  # if the model made a choice before maxCues was reached
         chooseA = np.argwhere(sim.data[net.pAction][:,0] > 0)
         chooseB = np.argwhere(sim.data[net.pAction][:,1] > 0)
-        firstA = chooseA[0][0] if len(chooseA)>0 else int(maxCues/dt)  # first time point when model chose A
-        firstB = chooseB[0][0] if len(chooseB)>0 else int(maxCues/dt)  # first time point when model chose B
+        firstA = chooseA[0][0] if len(chooseA)>0 else int(net.inputs.maxCues/dt)  # first time point when model chose A
+        firstB = chooseB[0][0] if len(chooseB)>0 else int(net.inputs.maxCues/dt)  # first time point when model chose B
         choice = "A" if firstA < firstB else "B"
     else:  # if the model was forced to choose after sampling maxCues
         valueA = sim.data[net.pAccumulator][-1][0]
         valueB = sim.data[net.pAccumulator][-1][1]
         choice = "A" if valueA > valueB else "B"
-    is_correct = True if choice==inputs.correct else False  
+    is_correct = True if choice==net.inputs.correct else False  
     return is_correct, cues_sampled
