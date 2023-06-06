@@ -1,1 +1,0 @@
-{"pid": {"_type": "choice", "_value": [1]}, "T": {"_type": "quniform", "_value": [0.1, 0.5, 0.01]}, "m": {"_type": "quniform", "_value": [0.1, 0.3, 0.01]}, "tau": {"_type": "quniform", "_value": [0.01, 0.1, 0.01]}, "delta": {"_type": "quniform", "_value": [0.1, 1.0, 0.1]}}

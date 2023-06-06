@@ -48,13 +48,13 @@ def objective(trial):
 
 if __name__ == '__main__':
 
-    mydb = mysql.connector.connect(host="localhost", user="generated_username", password="generated_password")
+    mydb = mysql.connector.connect(host="localhost", user="root", password="sqlpassword")
     # mycursor = mydb.cursor()
-    # mycursor.execute("CREATE DATABASE sql_test")
+    # mycursor.execute("CREATE DATABASE sat")
     # mycursor.execute("SHOW DATABASES")
     # for x in mycursor:
     #     print(x)
-    study = optuna.create_study(study_name="test", storage="sqlite:///generated_database_name.db", load_if_exists=True,
+    study = optuna.create_study(study_name="sat", storage="sqlite:///sat.db", load_if_exists=True,
         direction="minimize", pruner=optuna.pruners.MedianPruner())
 
     optuna.logging.get_logger("optuna").addHandler(logging.StreamHandler(sys.stdout))
