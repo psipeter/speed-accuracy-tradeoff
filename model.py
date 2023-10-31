@@ -124,12 +124,12 @@ def run_once(net, dt=0.001, progress_bar=False):
     chosen = False
     cues_sampled = 0
     with sim:
-        while chosen==False and cues_sampled<=2*net.inputs.maxCues:
+        while chosen==False and cues_sampled<2*net.inputs.maxCues:
             sim.run(0.5, progress_bar=progress_bar)
             chooseA = np.argwhere(sim.data[net.pAction][:,0] > 0)  # indices of time points when model was choosing A as action output
             chooseB = np.argwhere(sim.data[net.pAction][:,1] > 0)  # indices of time points when model was choosing B as action output
-            if not chosen: cues_sampled += 1
             chosen = True if (len(chooseA)>0 or len(chooseB)>0) else False
+            if not chosen: cues_sampled += 1
 
     if chosen:  # if the model made a choice before maxCues was reached
         chooseA = np.argwhere(sim.data[net.pAction][:,0] > 0)
