@@ -38,11 +38,51 @@ class DotPerception():
         else:  # directly perceive coherence level
             return self.motions
 
+class SequentialPerception():
+    def __init__(self, dt=0.001, dt_sample=0.5, seed=0, max_cues=18):
+        self.dP = None  # difference in probability of generating positive cues (dP=abs(P0 - P1))
+        self.Ps = []  # true probabilities of generating positive cues for the current trial
+        self.correct = None  # greater probability on the current trial (correct=argmax(Ps))
+        self.incorrect = None  # less probability on the current trial (correct=argmin(Ps))
+        self.dt = dt  # nengo timestep
+        self.dt_sample = dt_sample  # period for sampling one cue (time that cue appears on screen)
+        self.sampled = []  # sampled cues for the current timestep; alternates between [X,0] and [0, Y] every dt_sample
+        self.sampled_first = None  # which cue is sampled first on the current trial
+        self.rng = np.random.RandomState(seed=seed)
+    def create(self, dP):
+        assert 0<=dP<=1
+        self.dP = dP
+        self.Ps = np.zeros((2))
+        self.sampled = np.zeros((2))
+        self.correct = 0 if self.rng.rand() < 0.5 else 1
+        self.incorrect = 1 if self.correct==0 else 0
+        self.Ps[self.correct] = self.rng.uniform(0.1+self.dP, 0.9)
+        self.Ps[self.incorrect] = self.Ps[self.correct] - self.dP
+        self.sampled_first = 0 if self.rng.rand() < 0.5 else 1
+        if self.sampled_first == 0:
+            self.sampled[0] = 1 if self.rng.rand()<self.Ps[0] else -1
+            self.sampled[1] = 0
+        elif self.sampled_first == 1:
+            self.sampled[1] = 1 if self.rng.rand()<self.Ps[1] else -1
+            self.sampled[0] = 0
+        # print(self.Ps)
+        # print(self.sampled)
+    def sample(self, t):
+        if t % self.dt_sample < self.dt/10 and t>self.dt:
+            current_cue = np.where(self.sampled!=0)[0]
+            next_cue = np.where(self.sampled==0)[0]
+            self.sampled[current_cue] = 0
+            self.sampled[next_cue] = 1 if self.rng.rand()<self.Ps[next_cue] else -1
+            # print(t, self.sampled)    
+        return self.sampled
+
+
 def build_network(inputs, nActions=2, nNeurons=1000, synapse=0.1, seed=0, ramp=1, threshold=0.5, relative=0, probe_spikes=False):
     
     net = nengo.Network(seed=seed)
     net.config[nengo.Connection].synapse = 0.03
     net.config[nengo.Probe].synapse = 0.03
+    net.config[nengo.Ensemble].max_rates = nengo.dists.Uniform(100, 200)
 
     # references
     net.inputs = inputs
@@ -84,7 +124,7 @@ def build_network(inputs, nActions=2, nNeurons=1000, synapse=0.1, seed=0, ramp=1
         nengo.Connection(threshold, gate)  # external inputs
         nengo.Connection(gate, action.input, transform=-1*np.ones((nActions, 1)))  # inhibition via decision criteria
         # Probes
-        net.pInputs = nengo.Probe(environment)
+        net.pInputs = nengo.Probe(environment, synapse=None)
         net.pPerception = nengo.Probe(perception)
         net.pAccumulator = nengo.Probe(accumulator)
         net.pValue = nengo.Probe(value)
@@ -95,18 +135,3 @@ def build_network(inputs, nActions=2, nNeurons=1000, synapse=0.1, seed=0, ramp=1
         net.value = value
 
     return net
-
-
-def single_trial(net, nActions, dt=0.001, progress_bar=False, tmax=10):
-    sim = nengo.Simulator(net, progress_bar=False)
-    choice = None
-    RT = None
-    while choice==None:
-        sim.run(dt)
-        if np.any(sim.data[net.pAction][-1,:] > 0):
-            choice = np.argmax(sim.data[net.pAction][-1,:])
-            RT = sim.trange()[-1]
-        if sim.trange()[-1] > tmax:
-            return None, None
-    correct = 1 if choice==net.inputs.correct else 0
-    return 100*correct, 1000*RT
