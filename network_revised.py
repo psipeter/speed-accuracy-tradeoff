@@ -5,7 +5,7 @@ import seaborn as sns
 import pandas as pd
 
 class DotPerception():
-    def __init__(self, nActions, dt=0.001, dt_sample=0.02, seed=0):
+    def __init__(self, nActions, dt=0.001, dt_sample=0.01, seed=0, sigma=0):
         self.nActions = nActions
         self.coherence = None  # motion strength: 0=equal in two directions, 1=entirely one direction
         self.motions = []  # percent of dots moving towards each choice on this trial
@@ -13,6 +13,7 @@ class DotPerception():
         self.dt = dt  # nengo timestep
         self.dt_sample = dt_sample  # periodically resample the environment using a noisy perceptual system
         self.sampled = []  # currently sampled fraction of dots moving towards each choice
+        self.sigma = sigma
         self.rng = np.random.RandomState(seed=seed)
     def create(self, coherence, correct=None):
         assert 0 <= coherence <= 1
@@ -33,7 +34,9 @@ class DotPerception():
         if self.dt_sample > 0:  # noisy perceptual sampling process
             if t % self.dt_sample < self.dt:
                 for a in range(self.nActions):
-                    self.sampled[a] = 1 if self.rng.rand() < self.motions[a] else 0
+                    # self.sampled[a] = 1 if self.rng.rand() < self.motions[a] else 0
+                    self.sampled[a] = self.rng.normal(self.motions[a], self.sigma)
+                    # self.sampled[self.correct] += self.coherence
             return self.sampled
         else:  # directly perceive coherence level
             return self.motions
