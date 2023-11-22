@@ -80,7 +80,7 @@ class SequentialPerception():
         return self.sampled
 
 
-def build_network(inputs, nActions=2, nNeurons=1000, synapse=0.1, seed=0, ramp=1, threshold=0.5, relative=0, probe_spikes=False):
+def build_network(inputs, nActions=2, nNeurons=2000, synapse=0.1, seed=0, ramp=1, threshold=0.5, relative=0, rA=4, probe_spikes=False):
     
     net = nengo.Network(seed=seed)
     net.config[nengo.Connection].synapse = 0.03
@@ -103,7 +103,12 @@ def build_network(inputs, nActions=2, nNeurons=1000, synapse=0.1, seed=0, ramp=1
     if nActions==2:
         func_value = lambda x: [x[0]-x[1]*net.relative, x[1]-x[0]*net.relative]  # raw evidence vs relative advantage
     else:
-        func_value = lambda x: x  # todo: write relative version for nActions>2
+        func_value = lambda x: [
+            x[0]-x[1]*net.relative + x[0]-x[2]*net.relative + x[0]-x[3]*net.relative,
+            x[1]-x[0]*net.relative + x[1]-x[2]*net.relative + x[1]-x[3]*net.relative,
+            x[2]-x[0]*net.relative + x[2]-x[1]*net.relative + x[2]-x[3]*net.relative,
+            x[3]-x[0]*net.relative + x[3]-x[1]*net.relative + x[3]-x[2]*net.relative,
+            ]
 
     ePos = nengo.dists.Choice([[1]])
     iPos = nengo.dists.Uniform(0, 1)
@@ -114,8 +119,8 @@ def build_network(inputs, nActions=2, nNeurons=1000, synapse=0.1, seed=0, ramp=1
         threshold = nengo.Node(func_threshold)
         # Ensembles
         perception = nengo.Ensemble(nNeurons, nActions)
-        accumulator = nengo.Ensemble(nNeurons, nActions)
-        value = nengo.Ensemble(nNeurons, nActions)
+        accumulator = nengo.Ensemble(nNeurons, nActions, radius=rA)
+        value = nengo.Ensemble(nNeurons, nActions, radius=net.threshold)
         gate = nengo.Ensemble(nNeurons, 1, encoders=ePos, intercepts=iPos)
         action = nengo.networks.EnsembleArray(nNeurons, nActions, encoders=ePos, intercepts=iPos)
         # Connections
