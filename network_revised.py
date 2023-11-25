@@ -80,12 +80,13 @@ class SequentialPerception():
         return self.sampled
 
 
-def build_network(inputs, nActions=2, nNeurons=2000, synapse=0.1, seed=0, ramp=1, threshold=0.5, relative=0, rA=4, probe_spikes=False):
+def build_network(inputs, nActions=2, nNeurons=2000, synapse=0.1, seed=0, ramp=1, threshold=0.5, relative=0,
+        max_rates=nengo.dists.Uniform(100, 200), rA=4, probe_spikes=False):
     
     net = nengo.Network(seed=seed)
     net.config[nengo.Connection].synapse = 0.03
     net.config[nengo.Probe].synapse = 0.03
-    net.config[nengo.Ensemble].max_rates = nengo.dists.Uniform(100, 200)
+    net.config[nengo.Ensemble].max_rates = max_rates
 
     # references
     net.inputs = inputs
@@ -102,13 +103,13 @@ def build_network(inputs, nActions=2, nNeurons=2000, synapse=0.1, seed=0, ramp=1
     func_ramp = lambda x: net.synapse * net.ramp * x
     if nActions==2:
         func_value = lambda x: [x[0]-x[1]*net.relative, x[1]-x[0]*net.relative]  # raw evidence vs relative advantage
-    else:
-        func_value = lambda x: [
+    elif nActions==4:
+        func_value = lambda x: (1/3)*np.array([
             x[0]-x[1]*net.relative + x[0]-x[2]*net.relative + x[0]-x[3]*net.relative,
             x[1]-x[0]*net.relative + x[1]-x[2]*net.relative + x[1]-x[3]*net.relative,
             x[2]-x[0]*net.relative + x[2]-x[1]*net.relative + x[2]-x[3]*net.relative,
             x[3]-x[0]*net.relative + x[3]-x[1]*net.relative + x[3]-x[2]*net.relative,
-            ]
+            ])
 
     ePos = nengo.dists.Choice([[1]])
     iPos = nengo.dists.Uniform(0, 1)
