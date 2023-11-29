@@ -58,7 +58,7 @@ class SequentialPerception():
         assert 0<=dP<=1
         self.dP = dP
         self.Ps = np.zeros((2))
-        self.sampled = np.zeros((2, self.max_cues+1))
+        self.sampled = np.zeros((2, self.max_cues))
         self.correct = 0 if self.rng.rand() < 0.5 else 1
         self.incorrect = 1 if self.correct==0 else 0
         self.Ps[self.correct] = np.around(self.rng.uniform(0.1+self.dP, 0.9), 1)
