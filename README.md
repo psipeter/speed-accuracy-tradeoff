@@ -12,5 +12,5 @@ The speed-accuracy tradeoff (SAT) is a well-characterized feature of decision ma
  - **/optimize** contains helper files for running the optimization software on the Compute Canada cluster
 
 ## Folders
- - **/data** contains all raw empirical datafiles; all reformatted empirical data, and all simulated data, are saved here
+ - **/data** contains all reformatted empirical data and saved simulated data. Raw empirical data should be requested by contacting the corresponding authors of the original papers.
  - **/plots** contains all plots output by the jupyter notebooks
