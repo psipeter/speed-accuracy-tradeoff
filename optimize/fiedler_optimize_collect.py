@@ -13,13 +13,12 @@ if __name__ == '__main__':
     host = "gra-dbaas1.computecanada.ca"
     user = "psipeter"
     password = "gimuZhwLKPeU99bt"
-    trained_difficulty = sys.argv[1]
-    label = sys.argv[2]
+    label = sys.argv[1
     best_params = {}
     emp = pd.read_pickle("data/fiedler_trial.pkl")
 
     for pid in emp['id'].unique():
-        study_name=f"{pid}_{trained_difficulty}_{label}"
+        study_name=f"{pid}_{label}"
         study = optuna.create_study(
             study_name=study_name,
             storage=f"mysql+mysqlconnector://{user}:{password}@{host}/{user}_{study_name}",
