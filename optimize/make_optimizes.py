@@ -4,7 +4,7 @@ import pandas as pd
 
 trained_difficulty = sys.argv[1]
 label = sys.argv[2]
-emp = pd.read_pickle("data/fiedler_trials.pkl")
+emp = pd.read_pickle("data/fiedler_trial.pkl")
 
 for pid in emp['id'].unique():
    delete_string = f"drop database psipeter_{pid}_{trained_difficulty}_{label}"
@@ -21,7 +21,7 @@ for pid in emp['id'].unique():
        rsh.write("\n")
        rsh.write('''#SBATCH --ntasks-per-node=1''')
        rsh.write("\n")
-       rsh.write('''#SBATCH --time=10:0:0''')
+       rsh.write('''#SBATCH --time=1:0:0''')
        rsh.write("\n")
        rsh.write('''module load python/3.11.2 scipy-stack mysql''')
        rsh.write("\n")

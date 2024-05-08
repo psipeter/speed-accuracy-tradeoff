@@ -43,7 +43,7 @@ def objective(trial, dPs, pid):
     ramp = trial.suggest_float("ramp", 0.5, 1.5, step=0.01)
     relative = trial.suggest_float("relative", 0.1, 1.0, step=0.01)
     threshold = trial.suggest_float("threshold", 0.1, 0.5, step=0.01)
-    empirical = pd.read_pickle("data/fiedler_trials.pkl").query("id==@id & max_cues==@max_cues")
+    empirical = pd.read_pickle("data/fiedler_trial.pkl").query("id==@pid & max_cues==@max_cues")
 
     dfs = []
     for dP in dPs:
@@ -80,7 +80,7 @@ def objective(trial, dPs, pid):
 
 if __name__ == '__main__':
 
-    pid = sys.argv[1]
+    pid = int(sys.argv[1])
     trained_difficulty = sys.argv[2]
     label = sys.argv[3]
     study_name=f"{pid}_{trained_difficulty}_{label}"
