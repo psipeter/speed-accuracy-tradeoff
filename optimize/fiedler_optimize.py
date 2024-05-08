@@ -5,7 +5,7 @@ import pandas as pd
 import pickle
 import optuna
 import mysql.connector
-from network_revised import SequentialPerception, build_network
+from model import SequentialPerception, build_network
 
 def chi_squared_distance(a,b):
     distance = 0
@@ -81,16 +81,16 @@ def objective(trial, dPs, pid):
 if __name__ == '__main__':
 
     pid = sys.argv[1]
-    difficulty = sys.argv[2]
+    trained_difficulty = sys.argv[2]
     label = sys.argv[3]
-    study_name=f"{pid}_{difficulty}_{label}"
-    if difficulty=='easy':
+    study_name=f"{pid}_{trained_difficulty}_{label}"
+    if trained_difficulty=='easy':
         dPs = [0.4]
-    if difficulty=='normal':
+    if trained_difficulty=='moderate':
         dPs = [0.2]
-    if difficulty=='hard':
+    if trained_difficulty=='hard':
         dPs = [0.1]
-    if difficulty=='all':
+    if trained_difficulty=='all':
         dPs = [0.4, 0.2, 0.1]
     optuna_trials = 200
 

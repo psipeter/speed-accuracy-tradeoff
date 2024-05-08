@@ -51,6 +51,7 @@ class SequentialPerception():
         self.dt = dt  # nengo timestep
         self.dt_sample = dt_sample  # period for sampling one cue (time that cue appears on screen)
         self.sampled = None  # generated samples for the full simulation, up to max_cues
+        self.first = None  # whether the first sampled cue is for L or R
         # self.sampled = []  # sampled cues for the current timestep; alternates between [X,0] and [0, Y] every dt_sample
         # self.sampled_first = None  # which cue is sampled first on the current trial
         self.rng = np.random.RandomState(seed=seed)
@@ -69,22 +70,19 @@ class SequentialPerception():
         # print(self.Ps, pos, self.sampled)
         self.rng.shuffle(self.sampled[0])  # shuffle arrays to randomize when positive entries appear
         self.rng.shuffle(self.sampled[1])
+        self.first = 0 if self.rng.rand() < 0.5 else 1
         # print(self.sampled)
     def sample(self, t):
         idx = int(np.floor_divide(t, 2*self.dt_sample))  # determines which index from self.sampled will be drawn
-        idx2 = int(np.floor_divide(t, self.dt_sample)) % 2 # determines whether L or R cue is currently shown (L for first dt_sample, R for second dt_sample)
-        L = self.sampled[0, idx] * (1-idx2)
-        R = self.sampled[1, idx] * (idx2)
+        idx2 = int(np.floor_divide(t, self.dt_sample)) % 2 # determines whether L or R cue is currently shown
+        if self.first==0:  # L for first dt_sample, R for second dt_sample
+            L = self.sampled[0, idx] * (1-idx2)
+            R = self.sampled[1, idx] * (idx2)
+        else:  # R for first dt_sample, L for second dt_sample
+            L = self.sampled[0, idx] * (idx2)
+            R = self.sampled[1, idx] * (1-idx2)
         # print(t, idx, idx2, [L, R])
         return [L, R]
-    # def sample(self, t):
-    #     if t % self.dt_sample < self.dt/10 and t>self.dt:
-    #         current_cue = np.where(self.sampled!=0)[0]
-    #         next_cue = np.where(self.sampled==0)[0]
-    #         self.sampled[current_cue] = 0
-    #         self.sampled[next_cue] = 1 if self.rng.rand()<self.Ps[next_cue] else -1
-    #         # print(t, self.sampled)    
-    #     return self.sampled
 
 
 def build_network(inputs, nActions=2, nNeurons=2000, synapse=0.1, seed=0, ramp=1, threshold=0.5, relative=0,

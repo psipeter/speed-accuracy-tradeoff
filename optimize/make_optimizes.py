@@ -1,15 +1,17 @@
 import sys
 import subprocess
+import pandas as pd
 
-difficulty = sys.argv[1]
+trained_difficulty = sys.argv[1]
 label = sys.argv[2]
+emp = pd.read_pickle("data/fiedler_trials.pkl")
 
-for pid in range(57):
-   delete_string = f"drop database psipeter_{pid}_{difficulty}_{label}"
-   create_string = f"create database psipeter_{pid}_{difficulty}_{label}"
+for pid in emp['id'].unique():
+   delete_string = f"drop database psipeter_{pid}_{trained_difficulty}_{label}"
+   create_string = f"create database psipeter_{pid}_{trained_difficulty}_{label}"
    # a = subprocess.run(["mysql", "-u", "psipeter", "-e", delete_string])
    b = subprocess.run(["mysql", "-u", "psipeter", "-e", create_string])
-   string = f"python fiedler_optimize.py {pid} {difficulty} {label}"
+   string = f"python fiedler_optimize.py {pid} {trained_difficulty} {label}"
    with open (f'{pid}_optimize.sh', 'w') as rsh:
        rsh.write('''#!/bin/bash''')
        rsh.write("\n")

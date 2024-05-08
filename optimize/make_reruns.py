@@ -1,10 +1,12 @@
 import sys
+import pandas as pd
 
-difficulty = sys.argv[1]
+trained_difficulty = sys.argv[1]
 label = sys.argv[2]
+emp = pd.read_pickle("data/fiedler_trials.pkl")
 
-for pid in range(57):
-   string = f"python fiedler_rerun.py {pid} {difficulty} {label}"
+for pid in emp['id'].unique():
+   string = f"python fiedler_rerun.py {pid} {trained_difficulty} {label}"
    with open (f'{pid}_rerun.sh', 'w') as rsh:
        rsh.write('''#!/bin/bash''')
        rsh.write("\n")

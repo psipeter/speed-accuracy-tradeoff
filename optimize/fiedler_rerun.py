@@ -6,7 +6,7 @@ import pickle
 import optuna
 import mysql.connector
 import json
-from network_revised import SequentialPerception, build_network
+from model import SequentialPerception, build_network
 
 pid = str(sys.argv[1])
 sid = pid
@@ -19,12 +19,12 @@ experiment_time = 6
 dt = 0.001
 perception_seed = 0
 nNeurons = 500
-rA = 1.5
+rA = 1.0
 dt_sample = 0.1
 max_cues = 12
 cue_step = 4
 
-with open(f"data/fiedler_collect_{trained_difficulty}_{label}.json") as f:
+with open(f"data/fiedler_optimized_params_{trained_difficulty}_{label}.json") as f:
     params = json.load(f)
 param = params[pid]
 ramp = param['ramp']
@@ -104,5 +104,5 @@ for dP in dPs:
 
 sim1 = pd.concat(dfs1, ignore_index=True)
 sim2 = pd.concat(dfs2, ignore_index=True)
-sim1.to_pickle(f"data/fiedler1_rerun_{pid}_{trained_difficulty}_{label}.pkl")
-sim2.to_pickle(f"data/fiedler2_rerun_{pid}_{trained_difficulty}_{label}.pkl")
+sim1.to_pickle(f"data/fiedler_position_{pid}_{trained_difficulty}_{label}.pkl")
+sim2.to_pickle(f"data/fiedler_trial_{pid}_{trained_difficulty}_{label}.pkl")
