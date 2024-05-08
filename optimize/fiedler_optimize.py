@@ -41,9 +41,9 @@ def objective(trial, dPs, pid):
     max_cues = 12
     cue_step = 5
     ramp = trial.suggest_float("ramp", 0.5, 1.5, step=0.01)
-    relative = trial.suggest_categorical("relative", [1.0])  # trial.suggest_float("relative", 0.1, 1.0, step=0.01)
-    threshold = trial.suggest_float("threshold", 0.1, 1.0, step=0.01)
-    empirical = pd.read_pickle("data/fiedler2021.pkl").query("id==@pid & max_cues==@max_cues")
+    relative = trial.suggest_float("relative", 0.1, 1.0, step=0.01)
+    threshold = trial.suggest_float("threshold", 0.1, 0.5, step=0.01)
+    empirical = pd.read_pickle("data/fiedler_trials.pkl").query("id==@id & max_cues==@max_cues")
 
     dfs = []
     for dP in dPs:

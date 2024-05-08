@@ -16,8 +16,9 @@ if __name__ == '__main__':
     trained_difficulty = sys.argv[1]
     label = sys.argv[2]
     best_params = {}
+    emp = pd.read_pickle("data/fiedler_trials.pkl")
 
-    for pid in range(57):
+    for pid in emp['id'].unique():
         study_name=f"{pid}_{trained_difficulty}_{label}"
         study = optuna.create_study(
             study_name=study_name,
