@@ -20,12 +20,12 @@ data1.to_pickle(f"data/fiedler_position_{label}.pkl")
 data2.to_pickle(f"data/fiedler_trial_{label}.pkl")
 
 bins = np.arange(0.0, 1.2, 0.2)
-columns = ['type', 'id', 'difficulty', 'max_cues', 'fraction_sampled', 'mean_cue_choice_aligned']
+columns = ['type', 'id', 'dP', 'max_cues', 'fraction_sampled', 'mean_cue_choice_aligned']
 dfs = []
 for pid in data2['id'].unique():
-    for difficulty in data2['difficulty'].unique():
+    for dP in data2['dP'].unique():
         for max_cues in data2['max_cues'].unique():
-            sim = data2.query('id==@pid & difficulty==@difficulty & max_cues==@max_cues')
+            sim = data2.query('id==@pid & dP==@dP & max_cues==@max_cues')
             for i in range(len(bins)-1):
                 left = bins[i]
                 right = bins[i+1]
@@ -33,8 +33,8 @@ for pid in data2['id'].unique():
                 cue_choices_aligned = sim.query('fraction_sampled>@left & fraction_sampled<=@right')['cue_choice_aligned'].to_numpy()
                 mean = np.mean(cue_choices_aligned) if len(cue_choices_aligned)>1 else None
                 df = pd.DataFrame([[
-                    'model', pid, difficulty, max_cues, midpoint, mean,
+                    'model', pid, dP, max_cues, midpoint, mean,
                     ]], columns=columns)
                 dfs.append(df)
 sim = pd.concat(dfs, ignore_index=True)
-sim.to_pickle(f"data/{simfile}_binned.pkl")  # each row contains average and std data from one participant in one condition
+sim.to_pickle(f"data/fiedler_binned_{label}.pkl")  # each row contains average and std data from one participant in one condition
