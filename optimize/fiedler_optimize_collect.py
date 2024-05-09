@@ -13,7 +13,7 @@ if __name__ == '__main__':
     host = "gra-dbaas1.computecanada.ca"
     user = "psipeter"
     password = "gimuZhwLKPeU99bt"
-    label = sys.argv[1
+    label = sys.argv[1]
     best_params = {}
     emp = pd.read_pickle("data/fiedler_trial.pkl")
 

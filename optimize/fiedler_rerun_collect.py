@@ -22,10 +22,10 @@ data2.to_pickle(f"data/fiedler_trial_{label}.pkl")
 bins = np.arange(0.0, 1.2, 0.2)
 columns = ['type', 'id', 'dP', 'max_cues', 'fraction_sampled', 'mean_cue_choice_aligned']
 dfs = []
-for pid in data2['id'].unique():
-    for dP in data2['dP'].unique():
-        for max_cues in data2['max_cues'].unique():
-            sim = data2.query('id==@pid & dP==@dP & max_cues==@max_cues')
+for pid in data1['id'].unique():
+    for dP in data1['dP'].unique():
+        for max_cues in data1['max_cues'].unique():
+            sim = data1.query('id==@pid & dP==@dP & max_cues==@max_cues')
             for i in range(len(bins)-1):
                 left = bins[i]
                 right = bins[i+1]

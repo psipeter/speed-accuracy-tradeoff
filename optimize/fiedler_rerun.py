@@ -27,7 +27,7 @@ relative = param['relative']
 # dPs = param['dPs']
 cue_step = param['cue_step']
 nNeurons = param['nNeurons']
-rA = param['rA']
+rA = param['radius']
 
 columns1 = ['type', 'id', 'difficulty', 'trial', 'position', 'cue', 'value', 'fraction_sampled', 'sampled_cues', 'max_cues', 
         'chosen', 'target', 'accuracy', 'cue_choice_aligned']
