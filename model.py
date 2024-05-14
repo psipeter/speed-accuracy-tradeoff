@@ -32,7 +32,7 @@ class DotPerception():
                 self.motions[a] += -1.0 / self.nActions * coherence
     def sample(self, t):
         if self.dt_sample > 0:  # noisy perceptual sampling process
-            if t % self.dt_sample < self.dt:
+            if t % self.dt_sample < self.dt:  # equivalent to t%dt_sample==0, but corrects for numerical erros
                 for a in range(self.nActions):
                     # self.sampled[a] = 1 if self.rng.rand() < self.motions[a] else 0
                     self.sampled[a] = self.rng.normal(self.motions[a], self.sigma)
@@ -149,3 +149,116 @@ def build_network(inputs, nActions=2, nNeurons=2000, synapse=0.1, seed=0, ramp=1
         net.value = value
 
     return net
+
+
+def detect_extrema_dot_motion(inputs, threshold, tiebreaker, tmax=3, seed=0):
+    t = 0.0
+    if tiebreaker=='random':
+        rng = np.random.RandomState(seed=seed)
+    if tiebreaker=='largest':
+        largest_value = 0
+        largest_choice = None
+    choice = None
+    RT = None
+    while choice is None:
+        sample = inputs.sample(t)
+        # print(t, sample)
+        if np.any(sample > threshold):
+            choice = np.argmax(sample)
+            RT = t
+        elif t > tmax:
+            RT = tmax
+            if tiebreaker=='random':
+                choice = rng.randint(0, inputs.nActions)
+            else:
+                choice = largest_choice
+        else:
+            t += inputs.dt_sample
+            if tiebreaker=='largest':
+                sample_largest = np.max(sample)
+                sample_choice = np.argmax(sample)
+                if sample_largest>=largest_value:
+                    largest_value = sample_largest
+                    largest_choice = sample_choice
+    return choice, RT
+
+
+def detect_extrema_sequential(inputs, cluster_size, positive_only, tiebreaker, seed=0):
+    assert cluster_size > 0
+    Ls = inputs.sampled[0]
+    Rs = inputs.sampled[1]
+    first = "L" if inputs.first==0 else "R"
+    # print(Ls)
+    # print(Rs)
+    target = "L" if np.sum(Ls)>np.sum(Rs) else "R"
+    clusterL = []  # stores the size of the cluster at each position
+    clusterR = []
+    for p in range(len(Ls)):
+        currentL = Ls[p]
+        currentR = Rs[p]
+        if p==0:
+            if positive_only:
+                cL = currentL
+                cR = currentR
+            else:
+                cL = 1
+                cR = 1
+        elif p>0:
+            lastL = Ls[p-1]
+            lastR = Rs[p-1]
+            if positive_only:
+                cL = 0 if currentL==0 else clusterL[p-1]+1
+                cR = 0 if currentR==0 else clusterR[p-1]+1         
+            else:
+                cL = clusterL[p-1]+1 if (lastL==currentL) else 1
+                cR = clusterR[p-1]+1 if (lastR==currentR) else 1        
+        clusterL.append(cL)
+        clusterR.append(cR)
+        # print(clusterL)
+        # print(clusterR)
+        if clusterL[-1] >= cluster_size:
+            if positive_only:
+                choice = "L"
+            else:
+                if currentL==1: # positive cluster, choose this option
+                    choice = 'L'
+                else:  # negative cluster, choose the other option
+                    choice = 'R'
+            sampled_cues = 2*(p+1)-1 if first=="L" else 2*(p+1)
+            accuracy = 1.0 if choice==target else 0.0
+            return sampled_cues, accuracy, choice
+        elif clusterR[-1] >= cluster_size:
+            if positive_only:
+                choice = "R"
+            else:
+                if currentR==1: # positive cluster, choose this option
+                    choice = 'R'
+                else:  # negative cluster, choose the other option
+                    choice = 'L'
+            sampled_cues = 2*(p+1)-1 if first=="R" else 2*(p+1)
+            accuracy = 1.0 if choice==target else 0.0
+            return sampled_cues, accuracy, choice
+     # if no choice is made after max_cues samples are taken, choosen randomly
+    rng = np.random.RandomState(seed=seed)
+    if tiebreaker=='random':
+        choice = ["L", "R"][rng.randint(0,2)]
+    elif tiebreaker=='largest':  # choose the option according to the largest cluster, with random tiebreaks
+        largestL = np.max(clusterL)
+        largestR = np.max(clusterR)
+        if largestL > largestR:
+            if positive_only:
+                choice = "L"
+            else:
+                value = Ls[np.argmax(clusterL)]
+                choice = "L" if value==1 else "R"
+        elif largestR > largestL:
+            if positive_only:
+                choice = "R"
+            else:
+                value = Rs[np.argmax(clusterR)]
+                choice = "R" if value==1 else "L"
+        else:
+            choice = ["L", "R"][rng.randint(0,2)]
+    sampled_cues = len(Ls)+len(Rs)
+    accuracy = 1.0 if choice==target else 0.0
+    return sampled_cues, accuracy, choice
