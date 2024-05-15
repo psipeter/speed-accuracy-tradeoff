@@ -5,7 +5,7 @@ import pandas as pd
 import pickle
 import optuna
 import mysql.connector
-from network_revised import DotPerception, build_network
+from model import DotPerception, build_network
 
 def chi_squared_distance(a,b):
     distance = 0
@@ -36,44 +36,39 @@ def get_loss(simulated, empirical, coherences, emphases):
             total_loss += mean_loss
     return total_loss
 
-def objective(trial, name):
+def objective(trial):
     # let optuna choose the next parameters
     emphases = ['accuracy']
-    shared = ['ramp', 'threshold', 'relative']
+    name = 'E'
+    task_trials = 10
     dt = 0.001
-    task_trials = 400
-    nNeurons = 500
-    max_rates = nengo.dists.Uniform(60, 80)
-    rA = 1.5
-    dt_sample = 0.03
-    sigma = 0.6
-    tmax = 1.5
+    tmax = 2
     coherences = [0.032, 0.064, 0.128, 0.256, 0.512]
     perception_seed = 0
-    nActions = 2
-    ramp1 = trial.suggest_float("ramp1", 0.5, 2.0, step=0.01)
-    threshold1 = trial.suggest_float("threshold1", 0.01, 1.0, step=0.01)
-    # relative1 = trial.suggest_float("relative1", 0.0, 1.0, step=0.01)
-    relative1 = trial.suggest_float("relative1", 1.0, 1.0, step=0.01)
-    print(f"ramp1 {ramp1}, threshold1 {threshold1}, relative1 {relative1}")
-    ramp2 = ramp1 if 'ramp' in shared else trial.suggest_float("ramp2", 0.5, 2.0, step=0.01)
-    threshold2 = threshold1 if 'threshold' in shared else trial.suggest_float("threshold2", 0.01, 1.0, step=0.01)
-    relative2 = relative1 if 'relative' in shared else trial.suggest_float("relative2", 0.0, 1.0, step=0.01)     
-    print(f"ramp2 {ramp2}, threshold2 {threshold2}, relative2 {relative2}")
+    # network_seed = 0
+    ramp = trial.suggest_float("ramp", 0.5, 1.5, step=0.01)
+    threshold = trial.suggest_float("threshold", 0.01, 1.0, step=0.01)
+    relative = trial.suggest_float("relative", 0.01, 1.0, step=0.01)
+    dt_sample = trial.suggest_float("dt_sample", 0.001, 0.1, step=0.001)
+    sigma = trial.suggest_float("sigma", 0.01, 0.8, step=0.01)
+    nNeurons = trial.suggest_categorical("nNeurons", [500])
+    rA = trial.suggest_categorical("radius", [1.0])
+    minRate = trial.suggest_categorical("minRate", [60])
+    maxRate = trial.suggest_categorical("maxRate", [80])
+    max_rates = nengo.dists.Uniform(minRate, maxRate)
+    # print(f"ramp {ramp}, threshold {threshold}, relative {relative}, dt_sample {dt_sample}, sigma {sigma}")
     empirical = pd.read_pickle("data/hanks2014_behavior.pkl").query("id==@name")
 
     # run task_trials iterations of the task, measuring simulated reaction times and accuracies
     dfs = []
+    columns = ['emphasis', 'coherence', 'trial', 'RT', 'accuracy']
     for e, emphasis in enumerate(emphases):
-        ramp = [ramp1, ramp2][e]
-        threshold = [threshold1, threshold2][e]
-        relative = [relative1, relative2][e]
-        inputs = DotPerception(nActions=nActions, dt_sample=dt_sample, seed=perception_seed, sigma=sigma)
+        inputs = DotPerception(nActions=2, dt_sample=dt_sample, seed=perception_seed, sigma=sigma)
         for coherence in coherences:
             # print(f"coherence {coherence}")
             for t in range(task_trials):
                 inputs.create(coherence=coherence)
-                net = build_network(inputs, nActions=nActions, seed=t, ramp=ramp, threshold=threshold, relative=relative,
+                net = build_network(inputs, nActions=2, seed=t, ramp=ramp, threshold=threshold, relative=relative,
                                     nNeurons=nNeurons, max_rates=max_rates, rA=rA)
                 sim = nengo.Simulator(net, progress_bar=False)
                 choice = None
@@ -86,7 +81,7 @@ def objective(trial, name):
                         choice = np.argmax(sim.data[net.pValue][-1,:])
                         RT = sim.trange()[-1]
                 acc = 100 if choice==inputs.correct else 0
-                dfs.append(pd.DataFrame([[emphasis, coherence, t, RT, acc]], columns=('emphasis', 'coherence', 'trial', 'RT', 'accuracy')))
+                dfs.append(pd.DataFrame([[emphasis, coherence, t, RT, acc]], columns=columns))
                 print(f"emphasis {emphasis}, coherence {coherence}, trial {t}, RT {RT}")
     simulated = pd.concat(dfs, ignore_index=True)
     loss = get_loss(simulated, empirical, coherences, emphases)
@@ -95,10 +90,8 @@ def objective(trial, name):
 
 if __name__ == '__main__':
 
-    # nActions = int(sys.argv[1])
-    name = sys.argv[1]
-    label = sys.argv[2]
-    study_name = f"hanks_{name}_{label}"
+    label = sys.argv[1]
+    study_name = f"hanks_{label}"
     optuna_trials = 2000
 
     # objective(None, "E")
@@ -109,7 +102,7 @@ if __name__ == '__main__':
     password = "gimuZhwLKPeU99bt"
     study = optuna.create_study(
         study_name=study_name,
-        storage=f"mysql+mysqlconnector://{user}:{password}@{host}/{user}_{study_name}",
+        # storage=f"mysql+mysqlconnector://{user}:{password}@{host}/{user}_{study_name}",
         load_if_exists=True,
         direction="minimize")
-    study.optimize(lambda trial: objective(trial, name), n_trials=optuna_trials)
+    study.optimize(lambda trial: objective(trial), n_trials=optuna_trials)
