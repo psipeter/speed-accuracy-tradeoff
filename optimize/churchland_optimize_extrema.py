@@ -40,17 +40,15 @@ def get_loss(simulated, empirical, coherences, nActs):
 
 def objective(trial):
     # let optuna choose the next parameters
-    task_trials = 200
+    task_trials = 50
+    nActs = [2]  # [2, 4]
     threshold = trial.suggest_float("threshold", 0.1, 2.0, step=0.01)
     dt_sample = trial.suggest_float("dt_sample", 0.001, 0.1, step=0.001)
     # dt_sample = trial.suggest_categorical("dt_sample", [0.03])
     sigma = trial.suggest_float("sigma", 0.01, 0.5, step=0.01)
-    # tiebreaker = trial.suggest_categorical("tiebreaker", ['random', 'largest'])
     tiebreaker = trial.suggest_categorical("tiebreaker", ['random'])  # makes no difference for RT, which determines loss
-    # nActs = trial.suggest_categorical("nActions", [[2]])  # 2, 4
     nd_mean = trial.suggest_float("nd_mean", 0.01, 2.0, step=0.01)  # mean of non-decision time distribution
     nd_sigma = trial.suggest_float("nd_sigma", 0.01, 0.5, step=0.01)  # variance of non-decision time distribution
-    nActs = [2, 4]
     tmax = 3
     coherences = [0.032, 0.064, 0.128, 0.256, 0.512]  # 0.768
     perception_seed = 0
@@ -89,12 +87,22 @@ if __name__ == '__main__':
     # objective(None)
     # raise
 
+    host = "gra-dbaas1.computecanada.ca"
+    user = "psipeter"
+    password = "gimuZhwLKPeU99bt"
     study = optuna.create_study(
         study_name=study_name,
+        storage=f"mysql+mysqlconnector://{user}:{password}@{host}/{user}_{study_name}",
         load_if_exists=True,
         direction="minimize")
     study.optimize(lambda trial: objective(trial), n_trials=optuna_trials)
 
-    print("Best params: ", study.best_params)
-    print("Best value: ", study.best_value)
-    print("Best Trial: ", study.best_trial.number)
+    # study = optuna.create_study(
+    #     study_name=study_name,
+    #     load_if_exists=True,
+    #     direction="minimize")
+    # study.optimize(lambda trial: objective(trial), n_trials=optuna_trials)
+
+    # print("Best params: ", study.best_params)
+    # print("Best value: ", study.best_value)
+    # print("Best Trial: ", study.best_trial.number)
