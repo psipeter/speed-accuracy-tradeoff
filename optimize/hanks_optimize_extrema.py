@@ -40,15 +40,16 @@ def get_loss(simulated, empirical, coherences, emphases):
 
 def objective(trial):
     # let optuna choose the next parameters
-    emphases = ['accuracy']  # ["speed", "accuracy"]
+    emphases = ["speed", "accuracy"]
     name = "E"
-    task_trials = 10
-    threshold = trial.suggest_float("threshold", 0.1, 2.0, step=0.01)
+    task_trials = 1000
+    threshold1 = trial.suggest_float("threshold1", 0.1, 2.0, step=0.01)
+    threshold2 = trial.suggest_float("threshold2", 0.1, 2.0, step=0.01)
     dt_sample = trial.suggest_float("dt_sample", 0.001, 0.1, step=0.001)
-    sigma = trial.suggest_float("sigma", 0.01, 0.5, step=0.01)
+    sigma = trial.suggest_float("sigma", 0.01, 0.7, step=0.01)
     tiebreaker = trial.suggest_categorical("tiebreaker", ['random'])  # makes no difference for RT, which determines loss
     nd_mean = trial.suggest_float("nd_mean", 0.01, 2.0, step=0.01)  # mean of non-decision time distribution
-    nd_sigma = trial.suggest_float("nd_sigma", 0.01, 0.5, step=0.01)  # variance of non-decision time distribution
+    nd_sigma = trial.suggest_float("nd_sigma", 0.01, 0.7, step=0.01)  # variance of non-decision time distribution
     tmax = 2
     coherences = [0.032, 0.064, 0.128, 0.256, 0.512]
     perception_seed = 0
@@ -59,9 +60,10 @@ def objective(trial):
     # run task_trials iterations of the task, measuring simulated reaction times and accuracies
     columns = ['type', 'emphasis', 'coherence', 'trial', 'RT', 'accuracy']
     dfs = []
-    for emphasis in emphases:
+    for e, emphasis in enumerate(emphases):
         empirical = pd.read_pickle("data/hanks2014_behavior.pkl").query("id==@name")
         inputs = DotPerception(nActions=2, dt_sample=dt_sample, seed=perception_seed, sigma=sigma)
+        threshold = thresholds[e]
         for coherence in coherences:
             for t in range(task_trials):
                 inputs.create(coherence=coherence)
@@ -69,6 +71,7 @@ def objective(trial):
                 ndt = rng.normal(nd_mean, nd_sigma)
                 ndt = np.max([0, ndt])
                 RT += ndt  # add non-decision time to model's RT
+                RT = np.min([tmax, RT])
                 acc = 100 if choice==inputs.correct else 0
                 dfs.append(pd.DataFrame([['extrema', emphasis, coherence, t, RT, acc]], columns=columns))
                 # print(f"emphasis {emphasis}, coherence {coherence}, trial {t}, RT {RT}")
