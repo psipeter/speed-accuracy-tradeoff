@@ -17,10 +17,10 @@ def chi_squared_distance(a,b):
     # print(a, b, distance)
     return distance
 
-def get_loss(simulated, empirical, coherences):
+def get_loss(simulated, empirical, coherences, nActs):
     total_loss = 0
     bins = np.arange(0.0, 2.0, 0.2)
-    for nActions in [2, 4]:
+    for nActions in nActs:
         for coherence in coherences:
             coh = 100*coherence
             rts_sim = simulated.query("nActions==@nActions & coherence==@coherence")['RT'].to_numpy()
@@ -39,32 +39,36 @@ def get_loss(simulated, empirical, coherences):
 
 def objective(trial):
     # let optuna choose the next parameters
+    nActs = [2]
     dt = 0.001
-    task_trials = 200
-    nNeurons = 500
-    max_rates = nengo.dists.Uniform(80, 100)
-    rA = 1.5
-    dt_sample = 0.03
-    sigma = 0.5
+    task_trials = 50
     tmax = 3
-    coherences = [0.032, 0.064, 0.128, 0.256, 0.512]  # 0.768
-    perception_seed = 0  # trial.suggest_categorical("perception_seed", range(1000))
-    # network_seed = 0 # trial.suggest_categorical("network_seed", range(1000))
+    coherences = [0.032, 0.064, 0.128, 0.256, 0.512]
+    perception_seed = 0
     ramp = trial.suggest_float("ramp", 0.5, 2.0, step=0.01)
     threshold = trial.suggest_float("threshold", 0.1, 1.0, step=0.01)
     relative = trial.suggest_float("relative", 1.0, 1.0, step=0.01)
+    dt_sample = trial.suggest_float("dt_sample", 0.001, 0.1, step=0.001)
+    sigma = trial.suggest_float("sigma", 0.01, 0.8, step=0.01)
+    nNeurons = trial.suggest_categorical("nNeurons", [500])
+    rA = trial.suggest_categorical("radius", [1.0])
+    minRate = trial.suggest_categorical("minRate", [60])
+    maxRate = trial.suggest_categorical("maxRate", [80])
+    max_rates = nengo.dists.Uniform(minRate, maxRate)
     print(f"ramp {ramp}, threshold {threshold}, relative {relative}")
     empirical = pd.read_pickle("data/churchland2008_behavior.pkl")
 
     # run task_trials iterations of the task, measuring simulated reaction times and accuracies
     dfs = []
-    for nActions in [2,4]:
+    columns = ['nActions', 'coherence', 'trial', 'RT', 'accuracy']
+    for nActions in nActs:
         inputs = DotPerception(nActions=nActions, dt_sample=dt_sample, seed=perception_seed, sigma=sigma)
         for coherence in coherences:
             # print(f"coherence {coherence}")
             for t in range(task_trials):
                 inputs.create(coherence=coherence)
-                net = build_network(inputs, nActions=nActions, seed=t, ramp=ramp, threshold=threshold, relative=relative,
+                net = build_network(inputs, nActions=nActions, seed=t,
+                                    ramp=ramp, threshold=threshold, relative=relative,
                                     nNeurons=nNeurons, max_rates=max_rates, rA=rA)
                 sim = nengo.Simulator(net, progress_bar=False)
                 choice = None
@@ -77,16 +81,15 @@ def objective(trial):
                         choice = np.argmax(sim.data[net.pValue][-1,:])
                         RT = sim.trange()[-1]
                 acc = 100 if choice==inputs.correct else 0
-                dfs.append(pd.DataFrame([[nActions, coherence, t, RT, acc]], columns=('nActions', 'coherence', 'trial', 'RT', 'accuracy')))
+                dfs.append(pd.DataFrame([[nActions, coherence, t, RT, acc]], columns=columns))
                 print(f"nActions {nActions}, coherence {coherence}, trial {t}, RT {RT}")
     simulated = pd.concat(dfs, ignore_index=True)
-    loss = get_loss(simulated, empirical, coherences)
+    loss = get_loss(simulated, empirical, coherences, nActs)
     return loss
 
 
 if __name__ == '__main__':
 
-    # nActions = int(sys.argv[1])
     label = sys.argv[1]
     study_name = f"churchland_{label}"
     optuna_trials = 100
