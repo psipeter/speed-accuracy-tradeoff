@@ -37,6 +37,7 @@ class DotPerception():
                     # self.sampled[a] = 1 if self.rng.rand() < self.motions[a] else 0
                     self.sampled[a] = self.rng.normal(self.motions[a], self.sigma)
                     # self.sampled[self.correct] += self.coherence
+                # print(t, self.sampled)
             return self.sampled
         else:  # directly perceive coherence level
             return self.motions
@@ -85,8 +86,8 @@ class SequentialPerception():
         return [L, R]
 
 
-def build_network(inputs, nActions=2, nNeurons=2000, synapse=0.1, seed=0, ramp=1, threshold=0.5, relative=0,
-        max_rates=nengo.dists.Uniform(100, 200), rA=4, probe_spikes=False):
+def build_network(inputs, nActions=2, nNeurons=500, synapse=0.1, seed=0, ramp=1, threshold=0.3, relative=0,
+        max_rates=nengo.dists.Uniform(100, 200), rA=1, probe_spikes=False):
     
     net = nengo.Network(seed=seed)
     net.config[nengo.Connection].synapse = 0.03
