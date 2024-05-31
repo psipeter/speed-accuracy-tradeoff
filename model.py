@@ -87,7 +87,7 @@ class SequentialPerception():
 
 
 def build_network(inputs, nActions=2, nNeurons=500, synapse=0.1, seed=0, ramp=1, threshold=0.3, relative=0,
-        max_rates=nengo.dists.Uniform(100, 200), rA=1, probe_spikes=False):
+        max_rates=nengo.dists.Uniform(100, 200), rA=1, spike_filter=0.03):
     
     net = nengo.Network(seed=seed)
     net.config[nengo.Connection].synapse = 0.03
@@ -145,8 +145,7 @@ def build_network(inputs, nActions=2, nNeurons=500, synapse=0.1, seed=0, ramp=1,
         net.pValue = nengo.Probe(value)
         net.pGate = nengo.Probe(gate)
         net.pAction = nengo.Probe(action.output)
-        if probe_spikes:
-            net.pSpikes = nengo.Probe(value.neurons)
+        net.pSpikes = nengo.Probe(value.neurons, synapse=spike_filter)
         net.value = value
 
     return net
