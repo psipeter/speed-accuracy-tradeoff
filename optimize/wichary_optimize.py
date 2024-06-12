@@ -121,9 +121,8 @@ def build_network(inputs, params):
         accumulate = nengo.Ensemble(params['n_accumulate'], 2, label='dorsolateral', radius=params['radius_accumulate'])
         evaluate = nengo.Ensemble(params['n_neurons'], 2, label='motor cortex', radius=params['radius_evaluate'])
         compete = nengo.networks.BasalGanglia(2, params['n_array'], label='basal ganglia', input_bias=params['T'])
-        motor = nengo.Ensemble(params['n_neurons'], 2,
-                               encoders=nengo.dists.Choice([[1, 0], [0, 1]]),
-                               intercepts=nengo.dists.Uniform(0.01, 1))
+        motor = nengo.networks.EnsembleArray(params['n_neurons'], 2, ens_dimensions=1, label='motor',
+                                             intercepts=nengo.dists.Uniform(0, 1), encoders=nengo.dists.Choice([[1]]))
         control = nengo.Ensemble(params['n_control'], 2, label='locus ceruleus', radius=params['radius_control'])
         pupil = nengo.Ensemble(params['n_pupil'], 1, radius=params['radius_pupil'])
         differentiator = nengo.Ensemble(params['n_neurons'], 1,
@@ -133,7 +132,7 @@ def build_network(inputs, params):
         nengo.Connection(B_input, value[1], synapse=None)
         nengo.Connection(W_input, weight, synapse=None)
         nengo.Connection(E_input, control[1], synapse=None)
-        nengo.Connection(motor_input, motor, synapse=None, transform=[[1],[1]])
+        nengo.Connection(motor_input, motor.input, synapse=None, transform=[[1],[1]])
         nengo.Connection(W_input, differentiator, synapse=0.1, transform=1)
         nengo.Connection(W_input, differentiator, synapse=0.2, transform=-1)
         # nengo.Connection(differentiator, control.neurons, transform=10*np.ones((control.n_neurons, 1)))
@@ -144,7 +143,7 @@ def build_network(inputs, params):
         nengo.Connection(accumulate, accumulate, synapse=params['syn_fb'])
         nengo.Connection(accumulate, evaluate, synapse=params['syn_ff'], function=eval_func)
         nengo.Connection(evaluate, compete.input, synapse=params['syn_ff'])
-        nengo.Connection(compete.output, motor, synapse=params['syn_ff'])
+        nengo.Connection(compete.output, motor.input, synapse=params['syn_ff'])
         nengo.Connection(accumulate, control[0], synapse=params['syn_ff'], function=cog_load_func)
         nengo.Connection(control, evaluate, synapse=params['syn_ff'], function=urg_func)
         nengo.Connection(control, pupil, synapse=params['syn_ff'], function=pupil_func)
@@ -159,30 +158,24 @@ def build_network(inputs, params):
         network.p_accumulate = nengo.Probe(accumulate, synapse=params['syn_probe'])
         network.p_evaluate = nengo.Probe(evaluate, synapse=params['syn_probe'])
         network.p_compete = nengo.Probe(compete.output, synapse=params['syn_probe'])
-        network.p_motor = nengo.Probe(motor, synapse=params['syn_probe'])
+        network.p_motor = nengo.Probe(motor.output, synapse=params['syn_probe'])
         network.p_control = nengo.Probe(control, synapse=params['syn_probe'])
         network.p_pupil = nengo.Probe(pupil, synapse=params['syn_probe'])
 
     return network
 
 
-def objective(optuna_trial, ID):
-    # experimental parameters
-    emotion = 'neutral'  # [negative, neutral, positive]
-    weight_cond = 'NC' # C for compensatory, NC for non-compensatory
-    # empirical = pd.read_pickle("data/wichary.pkl").query("ID==@ID & weights==@weight_cond & emotion==@emotion")
-    # print(empirical)
-    # raise
+def objective(optuna_trial, ID, weights, emotion):
     # let optuna choose the next parameters
     params = {
         # individual parameters
-        'R': 0.1,  # rate of evidence accumulation
         'T': -1.0,  # threshold in basal ganglia
         'L': 1.0,  # absolute vs relative evaluation
         'U': 0.5,  # urgency parameter, scales LC output
+        'I': 0.0,  # scaling of inhibition from LC to multiply
+        'R': 0.1,  # rate of evidence accumulation
         'S': 1.0,  # emotional sensitivity, scales LC output
         'E': -0.3,  # emotional input [0 for neutral, -1 for negative, +1 for positive]
-        'I': 0.0,  # scaling of inhibition from LC to multiply
         # neurons per population
         'n_neurons': 300,
         'n_accumulate': 1000,  # neurons in the accumulator population
@@ -204,7 +197,6 @@ def objective(optuna_trial, ID):
         'network_seed': 0,
         'dt': 0.001,  # simulation timestep
         'tmin': 0.03,  # discard the first "tmin" amount of data, to avoid startup effects
-        'tmax': 6.0,  # total simulation time (=6*presentation_time)
         'presentation_time': 0.8,  # time to present each value/weight (seconds)
         'intercue_interval': 0.2,  # time between cue presentations, used to generate P300 signal
         # inputs
@@ -212,24 +204,19 @@ def objective(optuna_trial, ID):
         'pupil_input': 0.5,  # baseline input to pupil population
     }
 
-    params['R'] = optuna_trial.suggest_categorical("R", [0.1])
     params['T'] = optuna_trial.suggest_float("T", -3.0, 3.0, step=0.01)
     params['L'] = optuna_trial.suggest_float("L", 0.0, 1.0, step=0.01)
     params['U'] = optuna_trial.suggest_float("U", 0.0, 2.0, step=0.01)
+    params['R'] = optuna_trial.suggest_categorical("R", [0.1])
     params['S'] = optuna_trial.suggest_categorical("S", [0.0])
     params['I'] = optuna_trial.suggest_categorical("I", [0.0])
-    if emotion=='negative':
-        params['E'] = optuna_trial.suggest_categorical("E", [-1.0])
-    if emotion=='neutral':
-        params['E'] = optuna_trial.suggest_categorical("E", [0.0])
-    if emotion=='positive':
-        params['E'] = optuna_trial.suggest_categorical("E", [1.0])
+    params['E'] = optuna_trial.suggest_categorical("E", [0.0])
 
     dfs = []
     columns = ['type', 'ID', 'weights', 'emotion', 'trial', 'choice', 'cues_sampled', 'correct', 'response_time']
     for trial in range(params['trials']-1):
         params['network_seed'] = trial  # build a unique network for every trial; this increases trial-to-trial variance
-        inputs = build_inputs(trial+1, weight_cond, params['presentation_time'], params['intercue_interval'])
+        inputs = build_inputs(trial+1, weights, params['presentation_time'], params['intercue_interval'])
         network = build_network(inputs, params)
         sim = nengo.Simulator(network, dt=params['dt'], progress_bar=False)
         # define what constitutes 'choice' for the model, and measure the number of cues samples
@@ -254,20 +241,22 @@ def objective(optuna_trial, ID):
             choice = 'A' if np.argmax(motor)==0 else 'B'
             cues_sampled = int(response_time/(params['presentation_time'] + params['intercue_interval']))+1
             correct = 1 if choice==best_choice else 0
-        dfs.append(pd.DataFrame([['model', ID, weight_cond, emotion, trial, choice, cues_sampled, correct, response_time]], columns=columns))
-        print(f"ID {ID}, weights {weight_cond}, trial {trial}, choice {choice}, best choice {best_choice}, cues sampled {cues_sampled}, correct {correct}, response time {response_time:.4}")
+        dfs.append(pd.DataFrame([['model', ID, weights, emotion, trial, choice, cues_sampled, correct, response_time]], columns=columns))
+        print(f"ID {ID}, weights {weights}, trial {trial}, choice {choice}, best choice {best_choice}, cues sampled {cues_sampled}, correct {correct}, response time {response_time:.4}")
 
     simulated = pd.concat(dfs, ignore_index=True)
-    empirical = pd.read_pickle("data/wichary.pkl").query("ID==@ID & weights==@weight_cond & emotion==@emotion")
+    empirical = pd.read_pickle("data/wichary.pkl").query("ID==@ID & weights==@weights & emotion==@emotion")
     loss = get_loss(simulated, empirical)
     return loss
 
 if __name__ == '__main__':
 
     ID = int(sys.argv[1])
-    label = sys.argv[2]
-    study_name = f"{ID}_{label}"
-    optuna_trials = 200
+    weights = sys.argv[2]
+    emotion = sys.argv[3]
+    label = sys.argv[4]
+    study_name = f"wichary_{ID}_{weights}_{emotion}_{label}"
+    optuna_trials = 1000
 
     # objective(None, ID)
     # raise
@@ -277,7 +266,7 @@ if __name__ == '__main__':
     password = "gimuZhwLKPeU99bt"
     study = optuna.create_study(
         study_name=study_name,
-        # storage=f"mysql+mysqlconnector://{user}:{password}@{host}/{user}_{study_name}",
+        storage=f"mysql+mysqlconnector://{user}:{password}@{host}/{user}_{study_name}",
         load_if_exists=True,
         direction="minimize")
-    study.optimize(lambda trial: objective(trial, ID), n_trials=optuna_trials)
+    study.optimize(lambda trial: objective(trial, ID, weights, emotion), n_trials=optuna_trials)
