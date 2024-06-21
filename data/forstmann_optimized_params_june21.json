@@ -1,0 +1,182 @@
+{
+ "as1t": {
+  "coherence": 0.1,
+  "dt_sample": 0.035,
+  "e2": 0.54,
+  "ramp": 1.6500000000000001,
+  "relative": 0.13,
+  "sigma": 0.43,
+  "speed": -0.020000000000000018,
+  "threshold": 0.34
+ },
+ "bd6t": {
+  "coherence": 0.1,
+  "dt_sample": 0.1,
+  "e2": 0.05,
+  "ramp": 1.05,
+  "relative": 0.22,
+  "sigma": 0.49,
+  "speed": -0.020000000000000018,
+  "threshold": 0.26
+ },
+ "bl1t": {
+  "coherence": 0.1,
+  "dt_sample": 0.08600000000000001,
+  "e2": 0.11,
+  "ramp": 1.91,
+  "relative": 0.3,
+  "sigma": 0.6,
+  "speed": -0.010000000000000009,
+  "threshold": 0.42000000000000004
+ },
+ "hsft": {
+  "coherence": 0.1,
+  "dt_sample": 0.08800000000000001,
+  "e2": 0.29000000000000004,
+  "ramp": 1.74,
+  "relative": 0.21000000000000002,
+  "sigma": 0.34,
+  "speed": -0.020000000000000018,
+  "threshold": 0.28
+ },
+ "hsgt": {
+  "coherence": 0.1,
+  "dt_sample": 0.093,
+  "e2": 0.22,
+  "ramp": 1.81,
+  "relative": 0.43,
+  "sigma": 0.55,
+  "speed": -0.18000000000000002,
+  "threshold": 0.29000000000000004
+ },
+ "kd6t": {
+  "coherence": 0.1,
+  "dt_sample": 0.047,
+  "e2": 0.3,
+  "ramp": 1.55,
+  "relative": 0.05,
+  "sigma": 0.52,
+  "speed": -0.020000000000000018,
+  "threshold": 0.36000000000000004
+ },
+ "kd9t": {
+  "coherence": 0.1,
+  "dt_sample": 0.041,
+  "e2": 0.32,
+  "ramp": 1.57,
+  "relative": 0.3,
+  "sigma": 0.24000000000000002,
+  "speed": -0.010000000000000009,
+  "threshold": 0.27
+ },
+ "kmat": {
+  "coherence": 0.1,
+  "dt_sample": 0.054,
+  "e2": 0.99,
+  "ramp": 1.77,
+  "relative": 0.13,
+  "sigma": 0.34,
+  "speed": -0.010000000000000009,
+  "threshold": 0.31
+ },
+ "ku4t": {
+  "coherence": 0.1,
+  "dt_sample": 0.1,
+  "e2": 0.67,
+  "ramp": 1.84,
+  "relative": 0.56,
+  "sigma": 0.36000000000000004,
+  "speed": -0.12000000000000001,
+  "threshold": 0.34
+ },
+ "na1t": {
+  "coherence": 0.1,
+  "dt_sample": 0.059000000000000004,
+  "e2": 0.97,
+  "ramp": 1.83,
+  "relative": 0.11,
+  "sigma": 0.24000000000000002,
+  "speed": -0.03,
+  "threshold": 0.29000000000000004
+ },
+ "rmbt": {
+  "coherence": 0.1,
+  "dt_sample": 0.078,
+  "e2": 0.11,
+  "ramp": 1.91,
+  "relative": 0.67,
+  "sigma": 0.25,
+  "speed": -0.020000000000000018,
+  "threshold": 0.22
+ },
+ "rt2t": {
+  "coherence": 0.1,
+  "dt_sample": 0.082,
+  "e2": 0.9600000000000001,
+  "ramp": 0.8300000000000001,
+  "relative": 0.44,
+  "sigma": 0.09,
+  "speed": -0.010000000000000009,
+  "threshold": 0.66
+ },
+ "rt3t": {
+  "coherence": 0.1,
+  "dt_sample": 0.047,
+  "e2": 0.9600000000000001,
+  "ramp": 2.0,
+  "relative": 0.55,
+  "sigma": 0.55,
+  "speed": -0.020000000000000018,
+  "threshold": 0.35000000000000003
+ },
+ "rt5t": {
+  "coherence": 0.1,
+  "dt_sample": 0.04,
+  "e2": 0.51,
+  "ramp": 1.92,
+  "relative": 0.52,
+  "sigma": 0.48000000000000004,
+  "speed": -0.020000000000000018,
+  "threshold": 0.32
+ },
+ "scat": {
+  "coherence": 0.1,
+  "dt_sample": 0.085,
+  "e2": 0.68,
+  "ramp": 1.67,
+  "relative": 0.09999999999999999,
+  "sigma": 0.33,
+  "speed": -0.020000000000000018,
+  "threshold": 0.32
+ },
+ "ta5t": {
+  "coherence": 0.1,
+  "dt_sample": 0.064,
+  "e2": 0.74,
+  "ramp": 1.15,
+  "relative": 0.38,
+  "sigma": 0.48000000000000004,
+  "speed": -0.11000000000000001,
+  "threshold": 0.34
+ },
+ "vf1t": {
+  "coherence": 0.1,
+  "dt_sample": 0.022000000000000002,
+  "e2": 0.060000000000000005,
+  "ramp": 1.8900000000000001,
+  "relative": 0.19,
+  "sigma": 0.45,
+  "speed": -0.03,
+  "threshold": 0.31
+ },
+ "zk1t": {
+  "coherence": 0.1,
+  "dt_sample": 0.051000000000000004,
+  "e2": 0.46,
+  "ramp": 1.59,
+  "relative": 0.51,
+  "sigma": 0.56,
+  "speed": -0.010000000000000009,
+  "threshold": 0.24000000000000002
+ }
+}
