@@ -1,0 +1,164 @@
+{
+ "as1t": {
+  "coherence": 0.1,
+  "dt_sample": 0.068,
+  "nd_mean": 0.401,
+  "nd_sigma": 0.075,
+  "sigma": 0.42000000000000004,
+  "T_accuracy": 0.914,
+  "T_speed": 0.101
+ },
+ "bd6t": {
+  "coherence": 0.1,
+  "dt_sample": 0.031,
+  "nd_mean": 0.367,
+  "nd_sigma": 0.056,
+  "sigma": 0.5700000000000001,
+  "T_accuracy": 1.294,
+  "T_speed": 0.924
+ },
+ "bl1t": {
+  "coherence": 0.1,
+  "dt_sample": 0.001,
+  "nd_mean": 0.392,
+  "nd_sigma": 0.08,
+  "sigma": 0.35000000000000003,
+  "T_accuracy": 1.4580000000000002,
+  "T_speed": 0.27
+ },
+ "hsft": {
+  "coherence": 0.1,
+  "dt_sample": 0.009000000000000001,
+  "nd_mean": 0.35400000000000004,
+  "nd_sigma": 0.044000000000000004,
+  "sigma": 0.51,
+  "T_accuracy": 1.5060000000000002,
+  "T_speed": 1.199
+ },
+ "hsgt": {
+  "coherence": 0.1,
+  "dt_sample": 0.069,
+  "nd_mean": 0.371,
+  "nd_sigma": 0.048,
+  "sigma": 0.53,
+  "T_accuracy": 0.957,
+  "T_speed": 0.672
+ },
+ "kd6t": {
+  "coherence": 0.1,
+  "dt_sample": 0.016,
+  "nd_mean": 0.35200000000000004,
+  "nd_sigma": 0.047,
+  "sigma": 0.38,
+  "T_accuracy": 1.1740000000000002,
+  "T_speed": 0.958
+ },
+ "kd9t": {
+  "coherence": 0.1,
+  "dt_sample": 0.033,
+  "nd_mean": 0.363,
+  "nd_sigma": 0.065,
+  "sigma": 0.6,
+  "T_accuracy": 1.3390000000000002,
+  "T_speed": 0.889
+ },
+ "kmat": {
+  "coherence": 0.1,
+  "dt_sample": 0.056,
+  "nd_mean": 0.388,
+  "nd_sigma": 0.066,
+  "sigma": 0.5700000000000001,
+  "T_accuracy": 1.074,
+  "T_speed": 0.23500000000000001
+ },
+ "ku4t": {
+  "coherence": 0.1,
+  "dt_sample": 0.068,
+  "nd_mean": 0.363,
+  "nd_sigma": 0.057,
+  "sigma": 0.52,
+  "T_accuracy": 0.997,
+  "T_speed": 0.616
+ },
+ "na1t": {
+  "coherence": 0.1,
+  "dt_sample": 0.067,
+  "nd_mean": 0.35400000000000004,
+  "nd_sigma": 0.056,
+  "sigma": 0.35000000000000003,
+  "T_accuracy": 0.898,
+  "T_speed": 0.544
+ },
+ "rmbt": {
+  "coherence": 0.1,
+  "dt_sample": 0.030000000000000002,
+  "nd_mean": 0.392,
+  "nd_sigma": 0.068,
+  "sigma": 0.27,
+  "T_accuracy": 0.845,
+  "T_speed": 0.336
+ },
+ "rt2t": {
+  "coherence": 0.1,
+  "dt_sample": 0.07300000000000001,
+  "nd_mean": 0.36100000000000004,
+  "nd_sigma": 0.05,
+  "sigma": 0.54,
+  "T_accuracy": 1.135,
+  "T_speed": 0.649
+ },
+ "rt3t": {
+  "coherence": 0.1,
+  "dt_sample": 0.067,
+  "nd_mean": 0.375,
+  "nd_sigma": 0.055,
+  "sigma": 0.41000000000000003,
+  "T_accuracy": 0.878,
+  "T_speed": 0.623
+ },
+ "rt5t": {
+  "coherence": 0.1,
+  "dt_sample": 0.068,
+  "nd_mean": 0.395,
+  "nd_sigma": 0.071,
+  "sigma": 0.46,
+  "T_accuracy": 0.952,
+  "T_speed": 0.21100000000000002
+ },
+ "scat": {
+  "coherence": 0.1,
+  "dt_sample": 0.066,
+  "nd_mean": 0.369,
+  "nd_sigma": 0.064,
+  "sigma": 0.27,
+  "T_accuracy": 0.748,
+  "T_speed": 0.549
+ },
+ "ta5t": {
+  "coherence": 0.1,
+  "dt_sample": 0.09,
+  "nd_mean": 0.381,
+  "nd_sigma": 0.058,
+  "sigma": 0.33,
+  "T_accuracy": 0.781,
+  "T_speed": 0.552
+ },
+ "vf1t": {
+  "coherence": 0.1,
+  "dt_sample": 0.063,
+  "nd_mean": 0.35800000000000004,
+  "nd_sigma": 0.058,
+  "sigma": 0.36000000000000004,
+  "T_accuracy": 0.973,
+  "T_speed": 0.608
+ },
+ "zk1t": {
+  "coherence": 0.1,
+  "dt_sample": 0.008,
+  "nd_mean": 0.392,
+  "nd_sigma": 0.075,
+  "sigma": 0.5800000000000001,
+  "T_accuracy": 1.5970000000000002,
+  "T_speed": 0.311
+ }
+}
