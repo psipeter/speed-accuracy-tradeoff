@@ -37,13 +37,22 @@ def get_kde_loss(simulated, empirical, dPs, max_cues):
     for dP in dPs:
         cues_sim = simulated.query("dP==@dP")['cues'].to_numpy()
         cues_emp = empirical.query("dP==@dP")['cues'].to_numpy()
-        kde_emp = gaussian_kde(cues_emp, bw_method='scott')
-        kde_sim = gaussian_kde(cues_sim, bw_method='scott')
-        estimate_emp = kde_emp.evaluate(eval_points)
-        estimate_sim = kde_sim.evaluate(eval_points)
-        estimate_emp = estimate_emp / np.sum(estimate_emp)
-        estimate_sim = estimate_sim / np.sum(estimate_sim)
-        error = 1000*np.sqrt(np.mean(np.square(estimate_emp - estimate_sim)))
+        # check for zero variance and assign error accordingly
+        unique_sim = simulated.query("dP==@dP")['cues'].unique()
+        unique_emp = empirical.query("dP==@dP")['cues'].unique()
+        if len(unique_sim)==1 or len(unique_emp)==1:
+            mean_emp = np.mean(cues_emp)
+            mean_sim = np.mean(cues_sim)
+            error = np.abs(mean_emp - mean_sim)
+        else:
+            # assign error normally
+            kde_emp = gaussian_kde(cues_emp, bw_method='scott')
+            kde_sim = gaussian_kde(cues_sim, bw_method='scott')
+            estimate_emp = kde_emp.evaluate(eval_points)
+            estimate_sim = kde_sim.evaluate(eval_points)
+            estimate_emp = estimate_emp / np.sum(estimate_emp)
+            estimate_sim = estimate_sim / np.sum(estimate_sim)
+            error = 1000*np.sqrt(np.mean(np.square(estimate_emp - estimate_sim)))
         loss += error
     print(f"loss {loss}")
     return loss
