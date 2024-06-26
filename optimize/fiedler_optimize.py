@@ -5,6 +5,7 @@ import pandas as pd
 import pickle
 import optuna
 import mysql.connector
+from scipy.stats import gaussian_kde
 from model import SequentialPerception, build_network
 
 def chi_squared_distance(a,b):
@@ -30,20 +31,37 @@ def get_loss(simulated, empirical, dPs, max_cues, cue_step):
     print(f"loss {loss}")
     return loss
 
+def get_kde_loss(simulated, empirical, dPs, max_cues):
+    loss = 0
+    eval_points = np.linspace(0, 2*max_cues, 1000)
+    for dP in dPs:
+        cues_sim = simulated.query("dP==@dP")['cues'].to_numpy()
+        cues_emp = empirical.query("dP==@dP")['cues'].to_numpy()
+        kde_emp = gaussian_kde(cues_emp, bw_method='scott')
+        kde_sim = gaussian_kde(cues_sim, bw_method='scott')
+        estimate_emp = kde_emp.evaluate(eval_points)
+        estimate_sim = kde_sim.evaluate(eval_points)
+        estimate_emp = estimate_emp / np.sum(estimate_emp)
+        estimate_sim = estimate_sim / np.sum(estimate_sim)
+        error = 1000*np.sqrt(np.mean(np.square(estimate_emp - estimate_sim)))
+        loss += error
+    print(f"loss {loss}")
+    return loss
+
 def objective(trial, pid):
     perception_seed = 0
     dt = 0.001
     dt_sample = 0.1
     experiment_time = 60
     # Optuna picks optimized parameters
-    ramp = trial.suggest_float("ramp", 0.5, 1.5, step=0.01)
+    ramp = trial.suggest_float("ramp", 0.5, 2.0, step=0.01)
     relative = trial.suggest_float("relative", 0.1, 1.0, step=0.01)
-    threshold = trial.suggest_float("threshold", 0.1, 0.5, step=0.01)
+    threshold = trial.suggest_float("threshold", 0.01, 1.0, step=0.01)
     # We fix the remaining parameters, but save them for our records
-    nNeurons = trial.suggest_categorical("nNeurons", [500])
-    rA = trial.suggest_categorical("radius", [1.0])
-    max_cues = trial.suggest_categorical("max_cues", [12])
-    cue_step = trial.suggest_categorical("cue_step", [5])  # used in loss function for binning data
+    nNeurons = 500 # trial.suggest_categorical("nNeurons", [500])
+    rA = 1.0 # trial.suggest_categorical("radius", [1.0])
+    max_cues = 12 # trial.suggest_categorical("max_cues", [12])
+    cue_step = 5 # trial.suggest_categorical("cue_step", [5])  # used in loss function for binning data
     dPs = trial.suggest_categorical("dPs", [[0.2]])  # change this to compute lost over different difficulties
 
     dfs = []
@@ -76,7 +94,8 @@ def objective(trial, pid):
             task_trial += 1
     simulated = pd.concat(dfs, ignore_index=True)
     empirical = pd.read_pickle("data/fiedler_trial.pkl").query("id==@pid & max_cues==@max_cues")
-    loss = get_loss(simulated, empirical, dPs, max_cues, cue_step)
+    # loss = get_loss(simulated, empirical, dPs, max_cues, cue_step)
+    loss = get_kde_loss(simulated, empirical, dPs, max_cues)
     return loss
 
 
