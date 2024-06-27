@@ -8,6 +8,7 @@ import scipy.io
 import sys
 import optuna
 import mysql.connector
+from scipy.stats import gaussian_kde
 from model import DotPerception
 
 def build_network(inputs, w_accumulator, w_speed, nActions=2, nNeurons=500, synapse=0.1, seed=0,
@@ -149,36 +150,48 @@ def get_loss(simulated, empirical, emphases):
         # total_loss += mean_loss
     return total_loss
 
+def get_kde_loss(simulated, empirical, emphases):
+    total_loss = 0
+    eval_points = np.linspace(0, 1.5, 1000)
+    for emphasis in emphases:
+        rts_sim = simulated.query("emphasis==@emphasis")['RT'].to_numpy()
+        rts_emp = empirical.query("emphasis==@emphasis")['RT'].to_numpy()
+        # check for zero variance and assign error accordingly
+        if len(simulated.query("emphasis==@emphasis")['RT'].unique())==1:
+            mean_emp = np.mean(rts_emp)
+            mean_sim = np.mean(rts_sim)
+            kde_loss = 10*np.abs(mean_emp - mean_sim)
+            print('mean', kde_loss)
+        else:     
+            kde_emp = gaussian_kde(rts_emp, bw_method='scott')
+            kde_sim = gaussian_kde(rts_sim, bw_method='scott')
+            estimate_emp = kde_emp.evaluate(eval_points)
+            estimate_sim = kde_sim.evaluate(eval_points)
+            estimate_emp = estimate_emp / np.sum(estimate_emp)
+            estimate_sim = estimate_sim / np.sum(estimate_sim)
+            kde_loss = 1000*np.sqrt(np.mean(np.square(estimate_emp - estimate_sim)))
+            print('kde', kde_loss)
+        total_loss += kde_loss
+    return total_loss
+
 def objective(trial, pid):
 
-    emphases = ['speed', 'neutral', 'accuracy']
+    trials = 300
+    emphases = ['speed', 'accuracy']
 
     ramp = trial.suggest_float("ramp", 0.5, 2.0, step=0.01)
     threshold = trial.suggest_float("threshold", 0.01, 1.0, step=0.01)
     relative = trial.suggest_float("relative", 0.01, 1.0, step=0.01)
     speed = trial.suggest_float("speed", -0.2, -0.01, step=0.01)
-    e1 = 0.0  # trial.suggest_float("e1", 0.01, 1.0, step=0.01)
-    e2 = trial.suggest_float("e2", 0.01, 1.0, step=0.01)
-    e3 = 1.0  # trial.suggest_float("e3", 0.01, 1.0, step=0.01)
-    # dt_sample = trial.suggest_float("dt_sample", 0.001, 0.1, step=0.001)
-    dt_sample = trial.suggest_categorical("dt_sample", [0.1], step=0.001)
-    # sigma = trial.suggest_float("sigma", 0.01, 0.7, step=0.01)
-    sigma = trial.suggest_categorical("sigma", [0.2])
-    coherence = trial.suggest_categorical("coherence", [0.1])
+    dt_sample = trial.suggest_float("dt_sample", 0.01, 0.1, step=0.01)
+    sigma = trial.suggest_float("sigma", 0.01, 0.6, step=0.01)
+    coherence = trial.suggest_categorical("coherence", [0.15])
 
-    degrade_accumulator = 0
-    degrade_speed = 0
     nNeurons = 500 # trial.suggest_categorical("nNeurons", [500])
     rA = 1.0  # trial.suggest_categorical("radius", [1.0])
     minRate = 60  # trial.suggest_categorical("minRate", [60])
     maxRate = 80 # trial.suggest_categorical("maxRate", [80])
     max_rates = nengo.dists.Uniform(minRate, maxRate)
-    emphases_weighting = [e1, e2, e3]
-
-    trials = 300
-
-    weights_or_decoders = "decoders"
-    nActions = 2
     perception_seed = 0
     dt = 0.001
     tmax = 1.5
@@ -186,13 +199,14 @@ def objective(trial, pid):
     columns = ['type', 'pid', 'age', 'emphasis','trial', 'error', "RT"]
     dfs = []
     for e, emphasis in enumerate(emphases):
-        inputs = DotPerception(nActions=nActions, dt_sample=dt_sample, seed=perception_seed, sigma=sigma)
+        inputs = DotPerception(nActions=2, dt_sample=dt_sample, seed=perception_seed, sigma=sigma)
         inputs.create(coherence=coherence)
-        S = emphases_weighting[e] * speed
+        if emphasis=='speed': S=speed
+        if emphasis=='accuracy': S=0
         for trial in range(trials):
-            net_young = build_network(inputs, None, None, nActions=nActions, nNeurons=nNeurons, rA=rA, seed=trial,
+            net_young = build_network(inputs, None, None, nActions=2, nNeurons=nNeurons, rA=rA, seed=trial,
                                       max_rates=max_rates, ramp=ramp, threshold=threshold, speed=S, relative=relative,
-                                      save_w=True, weights_or_decoders=weights_or_decoders)
+                                      save_w=True, weights_or_decoders="decoders")
             sim_young = nengo.Simulator(net_young, progress_bar=False)
             # simulate the "young" network
             choice = None
@@ -209,7 +223,8 @@ def objective(trial, pid):
     
     simulated = pd.concat(dfs, ignore_index=True)
     empirical = pd.read_pickle("data/forstmann2011.pkl").query("pid==@pid")
-    loss = get_loss(simulated, empirical, emphases, ages)
+    # loss = get_loss(simulated, empirical, emphases)
+    loss = get_kde_loss(simulated, empirical, emphases)
     return loss
 
 if __name__ == '__main__':
