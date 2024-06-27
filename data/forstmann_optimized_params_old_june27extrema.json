@@ -1,0 +1,119 @@
+{
+ "br4t": {
+  "coherence": 0.15,
+  "dt_sample": 0.012,
+  "nd_mean": 0.28500000000000003,
+  "nd_sigma": 0.052000000000000005,
+  "sigma": 0.26,
+  "T_accuracy": 1.046,
+  "T_speed": 0.962
+ },
+ "he5t": {
+  "coherence": 0.15,
+  "dt_sample": 0.011,
+  "nd_mean": 0.29500000000000004,
+  "nd_sigma": 0.063,
+  "sigma": 0.19,
+  "T_accuracy": 0.921,
+  "T_speed": 0.827
+ },
+ "kf1t": {
+  "coherence": 0.15,
+  "dt_sample": 0.011,
+  "nd_mean": 0.29400000000000004,
+  "nd_sigma": 0.047,
+  "sigma": 0.28,
+  "T_accuracy": 1.1050000000000002,
+  "T_speed": 0.986
+ },
+ "kj1t": {
+  "coherence": 0.15,
+  "dt_sample": 0.011,
+  "nd_mean": 0.29100000000000004,
+  "nd_sigma": 0.043000000000000003,
+  "sigma": 0.2,
+  "T_accuracy": 0.961,
+  "T_speed": 0.893
+ },
+ "km1t": {
+  "coherence": 0.15,
+  "dt_sample": 0.032,
+  "nd_mean": 0.3,
+  "nd_sigma": 0.04,
+  "sigma": 0.28,
+  "T_accuracy": 1.071,
+  "T_speed": 0.92
+ },
+ "rw2t": {
+  "coherence": 0.15,
+  "dt_sample": 0.006,
+  "nd_mean": 0.3,
+  "nd_sigma": 0.047,
+  "sigma": 0.18000000000000002,
+  "T_accuracy": 0.966,
+  "T_speed": 0.904
+ },
+ "sd9t": {
+  "coherence": 0.15,
+  "dt_sample": 0.011,
+  "nd_mean": 0.28900000000000003,
+  "nd_sigma": 0.058,
+  "sigma": 0.24000000000000002,
+  "T_accuracy": 1.052,
+  "T_speed": 0.948
+ },
+ "si7t": {
+  "coherence": 0.15,
+  "dt_sample": 0.011,
+  "nd_mean": 0.29500000000000004,
+  "nd_sigma": 0.053000000000000005,
+  "sigma": 0.29000000000000004,
+  "T_accuracy": 1.127,
+  "T_speed": 1.034
+ },
+ "su8t": {
+  "coherence": 0.15,
+  "dt_sample": 0.012,
+  "nd_mean": 0.3,
+  "nd_sigma": 0.062000000000000006,
+  "sigma": 0.2,
+  "T_accuracy": 0.9369999999999999,
+  "T_speed": 0.874
+ },
+ "sw7t": {
+  "coherence": 0.15,
+  "dt_sample": 0.011,
+  "nd_mean": 0.28900000000000003,
+  "nd_sigma": 0.048,
+  "sigma": 0.26,
+  "T_accuracy": 1.087,
+  "T_speed": 0.994
+ },
+ "th8t": {
+  "coherence": 0.15,
+  "dt_sample": 0.011,
+  "nd_mean": 0.29500000000000004,
+  "nd_sigma": 0.059000000000000004,
+  "sigma": 0.3,
+  "T_accuracy": 1.191,
+  "T_speed": 1.028
+ },
+ "vb8t": {
+  "coherence": 0.15,
+  "dt_sample": 0.012,
+  "nd_mean": 0.29500000000000004,
+  "nd_sigma": 0.046000000000000006,
+  "sigma": 0.28,
+  "T_accuracy": 1.08,
+  "T_speed": 1.0170000000000001
+ },
+ "vc7t": {
+  "coherence": 0.15,
+  "dt_sample": 0.033,
+  "nd_mean": 0.3,
+  "nd_sigma": 0.046000000000000006,
+  "sigma": 0.29000000000000004,
+  "T_accuracy": 1.0310000000000001,
+  "T_speed": 0.963
+ }
+}
