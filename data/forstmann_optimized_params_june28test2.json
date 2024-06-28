@@ -1,0 +1,11 @@
+{
+ "bd6t": {
+  "coherence": 0.05,
+  "dt_sample": 0.01,
+  "ramp": 1.62,
+  "relative": 0.6,
+  "sigma": 0.35000000000000003,
+  "speed": -0.03,
+  "threshold": 0.16
+ }
+}
