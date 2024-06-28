@@ -172,20 +172,26 @@ def get_kde_loss(simulated, empirical, emphases):
             kde_loss = 1000*np.sqrt(np.mean(np.square(estimate_emp - estimate_sim)))
             print('kde', kde_loss)
         total_loss += kde_loss
+        error_sim = simulated.query("emphasis==@emphasis")['error'].mean()
+        error_emp = empirical.query("emphasis==@emphasis")['error'].mean()
+        error_loss = np.abs(error_sim - error_emp)
+        print('error', error_loss)
+        total_loss += error_loss
     return total_loss
 
 def objective(trial, pid):
 
-    trials = 300
+    trials = 3
     emphases = ['speed', 'accuracy']
 
-    ramp = trial.suggest_float("ramp", 0.5, 2.0, step=0.01)
-    threshold = trial.suggest_float("threshold", 0.01, 1.0, step=0.01)
-    relative = trial.suggest_float("relative", 0.01, 1.0, step=0.01)
-    speed = trial.suggest_float("speed", -0.2, -0.01, step=0.01)
-    dt_sample = trial.suggest_float("dt_sample", 0.01, 0.1, step=0.01)
-    sigma = trial.suggest_float("sigma", 0.01, 0.6, step=0.01)
-    coherence = trial.suggest_categorical("coherence", [0.15])
+    ramp = trial.suggest_float("ramp", 0.5, 2.0, step=0.001)
+    threshold = trial.suggest_float("threshold", 0.01, 1.0, step=0.001)
+    relative = trial.suggest_float("relative", 0.01, 1.0, step=0.001)
+    speed = trial.suggest_float("speed", -0.2, -0.01, step=0.001)
+    dt_sample = trial.suggest_float("dt_sample", 0.01, 0.1, step=0.001)
+    sigma = trial.suggest_float("sigma", 0.01, 0.6, step=0.001)
+    # coherence = trial.suggest_categorical("coherence", [0.15])
+    coherence = trial.suggest_float("coherence", 0.01, 0.5, step=0.01)
 
     nNeurons = 500 # trial.suggest_categorical("nNeurons", [500])
     rA = 1.0  # trial.suggest_categorical("radius", [1.0])
