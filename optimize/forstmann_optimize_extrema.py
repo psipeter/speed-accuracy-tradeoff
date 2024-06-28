@@ -62,11 +62,16 @@ def get_kde_loss(simulated, empirical, emphases):
             kde_loss = 1000*np.sqrt(np.mean(np.square(estimate_emp - estimate_sim)))
             print('kde', kde_loss)
         total_loss += kde_loss
+        error_sim = simulated.query("emphasis==@emphasis")['error'].mean()
+        error_emp = empirical.query("emphasis==@emphasis")['error'].mean()
+        error_loss = np.abs(error_sim - error_emp)
+        print('error', error_loss)
+        total_loss += error_loss
     return total_loss
 
 def objective(trial, pid, age):
     # let optuna choose the next parameters
-    task_trials = 300
+    task_trials = 1000
     emphases = ['speed', 'accuracy']
 
     threshold_speed = trial.suggest_float("threshold_speed", 0.1, 3.0, step=0.001)
@@ -75,7 +80,8 @@ def objective(trial, pid, age):
     sigma = trial.suggest_float("sigma", 0.01, 0.6, step=0.01)
     nd_mean = trial.suggest_float("nd_mean", 0.01, 2.0, step=0.001)  # mean of non-decision time distribution
     nd_sigma = trial.suggest_float("nd_sigma", 0.01, 0.6, step=0.001)  # variance of non-decision time distribution
-    coherence = trial.suggest_categorical("coherence", [0.15])
+    coherence = trial.suggest_float("coherence", 0.01, 0.6, step=0.001)  # variance of non-decision time distribution
+    # coherence = trial.suggest_categorical("coherence", [0.15])
 
     perception_seed = 0
     network_seed = 0
