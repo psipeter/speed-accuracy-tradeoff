@@ -11,9 +11,8 @@ import mysql.connector
 from scipy.stats import gaussian_kde
 from model import DotPerception
 
-def build_network(inputs, w_accumulator, w_speed, nActions=2, nNeurons=500, synapse=0.1, seed=0,
-    ramp=1, threshold=0.5, speed=-0.1, relative=0,
-    max_rates=nengo.dists.Uniform(60, 80), rA=1, save_w=False, weights_or_decoders="decoders"):
+def build_network(inputs, nActions=2, nNeurons=50, synapse=0.1, seed=0, ramp=1, threshold=0.3, relative=0,
+        max_rates=nengo.dists.Uniform(60, 80), rA=1, spike_filter=0.03, w_accumulator=None, w_gate=None, w_or_d=None):
     
     net = nengo.Network(seed=seed)
     net.config[nengo.Connection].synapse = 0.03
@@ -28,12 +27,10 @@ def build_network(inputs, w_accumulator, w_speed, nActions=2, nNeurons=500, syna
 
     net.ramp = ramp
     net.threshold = threshold
-    net.speed = speed
     net.relative = relative
 
     func_input = lambda t: net.inputs.sample(t)
     func_threshold = lambda t: net.threshold
-    func_speed = lambda t: net.speed
     func_ramp = lambda x: net.synapse * net.ramp * x
     func_value = lambda x: [x[0]-x[1]*net.relative, x[1]-x[0]*net.relative]  # raw evidence vs relative advantage
 
@@ -43,37 +40,33 @@ def build_network(inputs, w_accumulator, w_speed, nActions=2, nNeurons=500, syna
     with net:
         # Inputs
         environment = nengo.Node(func_input)
-        baseline_threshold = nengo.Node(func_threshold)
-        speed_control = nengo.Node(func_speed)
+        threshold = nengo.Node(func_threshold)
         # Ensembles
-        perception = nengo.Ensemble(nNeurons, nActions, seed=seed)
-        accumulator = nengo.Ensemble(nNeurons, nActions, radius=rA, seed=seed)
-        value = nengo.Ensemble(nNeurons, nActions, radius=net.threshold, seed=seed)
-        boundary = nengo.Ensemble(nNeurons, 1, seed=seed)
-        gate = nengo.Ensemble(nNeurons, 1, encoders=ePos, intercepts=iPos, seed=seed)
-        action = nengo.networks.EnsembleArray(nNeurons, nActions, encoders=ePos, intercepts=iPos, seed=seed)
+        perception = nengo.Ensemble(nNeurons, nActions)
+        accumulator = nengo.Ensemble(nNeurons, nActions, radius=rA)
+        value = nengo.Ensemble(nNeurons, nActions, radius=net.threshold)
+        gate = nengo.Ensemble(nNeurons, 1, encoders=ePos, intercepts=iPos)
+        action = nengo.networks.EnsembleArray(nNeurons, nActions, encoders=ePos, intercepts=iPos)
         # Connections
-        nengo.Connection(environment, perception, seed=seed)  # external inputs
-        nengo.Connection(perception, accumulator, synapse=net.synapse, function=func_ramp, seed=seed)  # send percepts to accumulator
-        # recurrent cortical connection for accumulation
-        if save_w:
-            conn_accumulator = nengo.Connection(accumulator, accumulator, synapse=net.synapse, seed=seed)            
-        elif weights_or_decoders=="decoders":
+        nengo.Connection(environment, perception)  # external inputs
+        nengo.Connection(perception, accumulator, synapse=net.synapse, function=func_ramp)  # send percepts to accumulator
+        # nengo.Connection(accumulator, accumulator, synapse=net.synapse) # recurrent connection for accumulation
+        nengo.Connection(accumulator, value, function=func_value)  # compute value from evidence in accumulator
+        nengo.Connection(value, action.input)
+        nengo.Connection(threshold, gate)  # external inputs
+        # nengo.Connection(gate, action.input, transform=-1*np.ones((nActions, 1)))  # inhibition via decision criteria
+        if w_or_d=='save':
+            conn_accumulator = nengo.Connection(accumulator, accumulator, synapse=net.synapse, seed=seed) # recurrent cortical connection for accumulation    
+            conn_gate0 = nengo.Connection(gate, action.ea_ensembles[0], transform=-1, seed=seed)  # inhibition via decision criteria, corticostriatal white matter
+            conn_gate1 = nengo.Connection(gate, action.ea_ensembles[1], transform=-1, seed=seed)  # inhibition via decision criteria, corticostriatal white matter
+        elif w_or_d=="d":
             conn_accumulator = nengo.Connection(accumulator.neurons, accumulator, synapse=net.synapse, transform=w_accumulator, seed=seed)
-        elif weights_or_decoders=="weights":
+            conn_gate0 = nengo.Connection(gate.neurons, action.ea_ensembles[0], transform=w_gate[0], seed=seed)
+            conn_gate1 = nengo.Connection(gate.neurons, action.ea_ensembles[1], transform=w_gate[1], seed=seed)
+        elif w_or_d=="w":
             conn_accumulator = nengo.Connection(accumulator.neurons, accumulator.neurons, synapse=net.synapse, transform=w_accumulator, seed=seed)
-        nengo.Connection(accumulator, value, function=func_value, seed=seed)  # compute value from evidence in accumulator
-        nengo.Connection(value, action.input, seed=seed)
-        nengo.Connection(baseline_threshold, gate, seed=seed)  # baseline activity for gate population
-        nengo.Connection(speed_control, boundary, seed=seed)  # external inputs (from "cortex") sets decision threshold based on task instructions
-        # corticostriatal white matter connection
-        if save_w:
-            conn_speed = nengo.Connection(boundary, gate, seed=seed)
-        elif weights_or_decoders=="decoders":
-            conn_speed = nengo.Connection(boundary.neurons, gate, transform=w_speed, seed=seed)
-        elif weights_or_decoders=="weights":
-            conn_speed = nengo.Connection(boundary.neurons, gate.neurons, transform=w_speed, seed=seed)
-        nengo.Connection(gate, action.input, transform=-1*np.ones((nActions, 1)))  # inhibition via decision criteria
+            conn_gate0 = nengo.Connection(gate.neurons, action.ea_ensembles[0].neurons, transform=w_gate[0], seed=seed)
+            conn_gate1 = nengo.Connection(gate.neurons, action.ea_ensembles[1].neurons, transform=w_gate[1], seed=seed)
         # Probes
         net.pInputs = nengo.Probe(environment, synapse=None)
         net.pPerception = nengo.Probe(perception)
@@ -81,46 +74,16 @@ def build_network(inputs, w_accumulator, w_speed, nActions=2, nNeurons=500, syna
         net.pValue = nengo.Probe(value)
         net.pGate = nengo.Probe(gate)
         net.pAction = nengo.Probe(action.output)
+        net.pSpikes = nengo.Probe(value.neurons, synapse=spike_filter)
         net.accumulator = accumulator
-        net.value = value
-        net.boundary = boundary
         net.gate = gate
+        net.value = value
+        net.action = action
         net.conn_accumulator = conn_accumulator
-        net.conn_speed = conn_speed
+        net.conn_gate0 = conn_gate0
+        net.conn_gate1 = conn_gate1
+
     return net
-
-
-def degrade_weights(net_young, pre_sim, degrade_accumulator, degrade_speed, seed=0, weights_or_decoders="weights"):
-    young_accumulator = pre_sim.data[net_young.conn_accumulator].weights  # decoders
-    young_speed = pre_sim.data[net_young.conn_speed].weights  # decoders
-    old_accumulator = young_accumulator.copy()
-    old_speed = young_speed.copy()
-    rng = np.random.RandomState(seed=seed)
-
-    if weights_or_decoders=="decoders":
-        idx_accumulator = rng.choice(range(old_accumulator.shape[1]), size=int(degrade_accumulator*old_accumulator.shape[1]), replace=False)
-        idx_speed = rng.choice(range(old_speed.shape[1]), size=int(degrade_speed*old_speed.shape[1]), replace=False)
-        old_accumulator[:,idx_accumulator] = 0
-        old_speed[:,idx_speed] = 0
-
-    if weights_or_decoders=="weights":
-        e_accumulator = pre_sim.data[net_young.accumulator].encoders
-        e_speed = pre_sim.data[net_young.gate].encoders
-        w_accumulator = e_accumulator @ young_accumulator
-        w_speed = e_speed @ young_speed
-        # print(e_accumulator.shape, old_accumulator.shape, w_accumulator.shape)
-        flat_accumulator = w_accumulator.ravel().copy()
-        flat_speed = w_speed.ravel().copy()
-        idx_accumulator = rng.choice(range(flat_accumulator.shape[0]), size=int(degrade_accumulator*flat_accumulator.shape[0]), replace=False)
-        idx_speed = rng.choice(range(flat_speed.shape[0]), size=int(degrade_speed*flat_speed.shape[0]), replace=False)
-        flat_accumulator[idx_accumulator] = 0
-        flat_speed[idx_speed] = 0
-        old_accumulator = flat_accumulator.reshape(w_accumulator.shape)
-        old_speed = flat_speed.reshape(w_speed.shape)
-        # print(np.sum(w_accumulator), np.sum(old_accumulator))
-        # print(np.sum(w_speed), np.sum(old_speed))
-
-    return old_accumulator, old_speed
 
 
 def chi_squared_distance(a,b):
@@ -172,11 +135,11 @@ def get_kde_loss(simulated, empirical, emphases):
             kde_loss = 1000*np.sqrt(np.mean(np.square(estimate_emp - estimate_sim)))
             print('kde', kde_loss)
         total_loss += kde_loss
-        error_sim = simulated.query("emphasis==@emphasis")['error'].mean()
-        error_emp = empirical.query("emphasis==@emphasis")['error'].mean()
-        error_loss = np.abs(error_sim - error_emp)
-        print('error', error_loss)
-        total_loss += error_loss
+        # error_sim = simulated.query("emphasis==@emphasis")['error'].mean()
+        # error_emp = empirical.query("emphasis==@emphasis")['error'].mean()
+        # error_loss = np.abs(error_sim - error_emp)
+        # print('error', error_loss)
+        # total_loss += error_loss
     return total_loss
 
 def objective(trial, pid):
@@ -185,47 +148,46 @@ def objective(trial, pid):
     emphases = ['speed', 'accuracy']
 
     ramp = trial.suggest_float("ramp", 0.5, 2.0, step=0.001)
-    threshold = trial.suggest_float("threshold", 0.01, 1.0, step=0.001)
+    threshold_speed = trial.suggest_float("threshold_speed", 0.01, 1.0, step=0.001)
+    threshold_accuracy = trial.suggest_float("threshold_accuracy", 0.01, 1.0, step=0.001)
     relative = trial.suggest_float("relative", 0.01, 1.0, step=0.001)
-    speed = trial.suggest_float("speed", -0.2, -0.01, step=0.001)
     dt_sample = trial.suggest_float("dt_sample", 0.01, 0.1, step=0.001)
     sigma = trial.suggest_float("sigma", 0.01, 0.6, step=0.001)
-    # coherence = trial.suggest_categorical("coherence", [0.15])
-    coherence = trial.suggest_float("coherence", 0.01, 0.5, step=0.01)
+    coherence = trial.suggest_categorical("coherence", [0.2])
+    # coherence = trial.suggest_float("coherence", 0.01, 0.5, step=0.01)
 
-    nNeurons = 500 # trial.suggest_categorical("nNeurons", [500])
+    nNeurons = 50 # trial.suggest_categorical("nNeurons", [500])
     rA = 1.0  # trial.suggest_categorical("radius", [1.0])
-    minRate = 60  # trial.suggest_categorical("minRate", [60])
-    maxRate = 80 # trial.suggest_categorical("maxRate", [80])
-    max_rates = nengo.dists.Uniform(minRate, maxRate)
+    max_rates = nengo.dists.Uniform(60, 80)
     perception_seed = 0
     dt = 0.001
-    tmax = 1.5
+    tmin = 0.1
+    tmax = 2
     
-    columns = ['type', 'pid', 'age', 'emphasis','trial', 'error', "RT"]
+    columns = ['type', 'pid', 'age', 'emphasis', 'trial', 'error', "RT"]
     dfs = []
     for e, emphasis in enumerate(emphases):
         inputs = DotPerception(nActions=2, dt_sample=dt_sample, seed=perception_seed, sigma=sigma)
         inputs.create(coherence=coherence)
-        if emphasis=='speed': S=speed
-        if emphasis=='accuracy': S=0
-        for trial in range(trials):
-            net_young = build_network(inputs, None, None, nActions=2, nNeurons=nNeurons, rA=rA, seed=trial,
-                                      max_rates=max_rates, ramp=ramp, threshold=threshold, speed=S, relative=relative,
-                                      save_w=True, weights_or_decoders="decoders")
+        if emphasis=='speed': threshold = threshold_speed
+        if emphasis=='accuracy': threshold = threshold_accuracy
+        print(f"emphasis {emphasis}")
+        for task_trial in range(trials):
+            net_young = build_network(inputs, w_or_d='save', nActions=2, nNeurons=nNeurons, rA=rA, seed=task_trial,
+                                      max_rates=max_rates, ramp=ramp, threshold=threshold, relative=relative)
             sim_young = nengo.Simulator(net_young, progress_bar=False)
-            # simulate the "young" network
             choice = None
             while choice==None:
                 sim_young.run(dt)
-                if np.any(sim_young.data[net_young.pAction][-1,:] > 0.01):
+                tnow = sim_young.trange()[-1]
+                if np.any(sim_young.data[net_young.pAction][-1,:] > 0.01) and tnow>tmin:
                     choice = np.argmax(sim_young.data[net_young.pAction][-1,:])
-                    RT = sim_young.trange()[-1]
+                    RT = tnow
                 if sim_young.trange()[-1] > tmax:
                     choice = np.argmax(sim_young.data[net_young.pValue][-1,:])
-                    RT = sim_young.trange()[-1]
+                    RT = tnow
             error = 0 if choice==inputs.correct else 100
-            dfs.append(pd.DataFrame([['model', trial, 'young', emphasis, trial, error, RT]], columns=columns))
+            dfs.append(pd.DataFrame([['model', pid, 'young', emphasis, task_trial, error, RT]], columns=columns))
     
     simulated = pd.concat(dfs, ignore_index=True)
     empirical = pd.read_pickle("data/forstmann2011.pkl").query("pid==@pid")
@@ -248,7 +210,7 @@ if __name__ == '__main__':
     password = "gimuZhwLKPeU99bt"
     study = optuna.create_study(
         study_name=study_name,
-        storage=f"mysql+mysqlconnector://{user}:{password}@{host}/{user}_{study_name}",
+        # storage=f"mysql+mysqlconnector://{user}:{password}@{host}/{user}_{study_name}",
         load_if_exists=True,
         direction="minimize")
     study.optimize(lambda trial: objective(trial, pid), n_trials=optuna_trials)
