@@ -12,7 +12,7 @@ from scipy.stats import gaussian_kde
 from model import DotPerception
 
 def build_network(inputs, nActions=2, nNeurons=50, synapse=0.1, seed=0, ramp=1, threshold=0.3, relative=0,
-        max_rates=nengo.dists.Uniform(60, 80), rA=1, spike_filter=0.03, w_accumulator=None, w_gate=None, w_or_d=None):
+        max_rates=nengo.dists.Uniform(60, 80), rA=1, spike_filter=0.03, w_accumulator=None, w_threshold=None, w_or_d=None):
     
     net = nengo.Network(seed=seed)
     net.config[nengo.Connection].synapse = 0.03
@@ -40,12 +40,13 @@ def build_network(inputs, nActions=2, nNeurons=50, synapse=0.1, seed=0, ramp=1, 
     with net:
         # Inputs
         environment = nengo.Node(func_input)
-        threshold = nengo.Node(func_threshold)
+        thr_input = nengo.Node(func_threshold)
         # Ensembles
         perception = nengo.Ensemble(nNeurons, nActions)
         accumulator = nengo.Ensemble(nNeurons, nActions, radius=rA)
         value = nengo.Ensemble(nNeurons, nActions, radius=net.threshold)
-        gate = nengo.Ensemble(nNeurons, 1, encoders=ePos, intercepts=iPos)
+        thresh = nengo.Ensemble(nNeurons, 1, radius=2*net.threshold)
+        gate = nengo.Ensemble(nNeurons, 1, encoders=ePos, intercepts=iPos, radius=2*net.threshold)
         action = nengo.networks.EnsembleArray(nNeurons, nActions, encoders=ePos, intercepts=iPos)
         # Connections
         nengo.Connection(environment, perception)  # external inputs
@@ -53,20 +54,19 @@ def build_network(inputs, nActions=2, nNeurons=50, synapse=0.1, seed=0, ramp=1, 
         # nengo.Connection(accumulator, accumulator, synapse=net.synapse) # recurrent connection for accumulation
         nengo.Connection(accumulator, value, function=func_value)  # compute value from evidence in accumulator
         nengo.Connection(value, action.input)
-        nengo.Connection(threshold, gate)  # external inputs
-        # nengo.Connection(gate, action.input, transform=-1*np.ones((nActions, 1)))  # inhibition via decision criteria
+        nengo.Connection(thr_input, thresh)  # external inputs
+        # nengo.Connection(thresh, gate)
+        nengo.Connection(gate, action.ea_ensembles[0], transform=-1, seed=seed)  # inhibition via decision criteria
+        nengo.Connection(gate, action.ea_ensembles[1], transform=-1, seed=seed)  # inhibition via decision criteria
         if w_or_d=='save':
             conn_accumulator = nengo.Connection(accumulator, accumulator, synapse=net.synapse, seed=seed) # recurrent cortical connection for accumulation    
-            conn_gate0 = nengo.Connection(gate, action.ea_ensembles[0], transform=-1, seed=seed)  # inhibition via decision criteria, corticostriatal white matter
-            conn_gate1 = nengo.Connection(gate, action.ea_ensembles[1], transform=-1, seed=seed)  # inhibition via decision criteria, corticostriatal white matter
+            conn_threshold = nengo.Connection(thresh, gate, seed=seed)  # corticostriatal white matter
         elif w_or_d=="d":
             conn_accumulator = nengo.Connection(accumulator.neurons, accumulator, synapse=net.synapse, transform=w_accumulator, seed=seed)
-            conn_gate0 = nengo.Connection(gate.neurons, action.ea_ensembles[0], transform=w_gate[0], seed=seed)
-            conn_gate1 = nengo.Connection(gate.neurons, action.ea_ensembles[1], transform=w_gate[1], seed=seed)
+            conn_threshold = nengo.Connection(thresh.neurons, gate, transform=w_threshold, seed=seed)
         elif w_or_d=="w":
             conn_accumulator = nengo.Connection(accumulator.neurons, accumulator.neurons, synapse=net.synapse, transform=w_accumulator, seed=seed)
-            conn_gate0 = nengo.Connection(gate.neurons, action.ea_ensembles[0].neurons, transform=w_gate[0], seed=seed)
-            conn_gate1 = nengo.Connection(gate.neurons, action.ea_ensembles[1].neurons, transform=w_gate[1], seed=seed)
+            conn_threshold = nengo.Connection(thresh.neurons, gate.neurons, transform=w_threshold, seed=seed)
         # Probes
         net.pInputs = nengo.Probe(environment, synapse=None)
         net.pPerception = nengo.Probe(perception)
@@ -77,11 +77,11 @@ def build_network(inputs, nActions=2, nNeurons=50, synapse=0.1, seed=0, ramp=1, 
         net.pSpikes = nengo.Probe(value.neurons, synapse=spike_filter)
         net.accumulator = accumulator
         net.gate = gate
+        net.thresh = thresh
         net.value = value
         net.action = action
         net.conn_accumulator = conn_accumulator
-        net.conn_gate0 = conn_gate0
-        net.conn_gate1 = conn_gate1
+        net.conn_threshold = conn_threshold
 
     return net
 
@@ -144,7 +144,7 @@ def get_kde_loss(simulated, empirical, emphases):
 
 def objective(trial, pid):
 
-    trials = 3
+    trials = 100
     emphases = ['speed', 'accuracy']
 
     ramp = trial.suggest_float("ramp", 0.5, 2.0, step=0.001)
@@ -153,10 +153,10 @@ def objective(trial, pid):
     relative = trial.suggest_float("relative", 0.01, 1.0, step=0.001)
     dt_sample = trial.suggest_float("dt_sample", 0.01, 0.1, step=0.001)
     sigma = trial.suggest_float("sigma", 0.01, 0.6, step=0.001)
-    coherence = trial.suggest_categorical("coherence", [0.2])
+    coherence = trial.suggest_categorical("coherence", [0.10])
     # coherence = trial.suggest_float("coherence", 0.01, 0.5, step=0.01)
 
-    nNeurons = 50 # trial.suggest_categorical("nNeurons", [500])
+    nNeurons = 70 # trial.suggest_categorical("nNeurons", [500])
     rA = 1.0  # trial.suggest_categorical("radius", [1.0])
     max_rates = nengo.dists.Uniform(60, 80)
     perception_seed = 0
@@ -210,7 +210,7 @@ if __name__ == '__main__':
     password = "gimuZhwLKPeU99bt"
     study = optuna.create_study(
         study_name=study_name,
-        # storage=f"mysql+mysqlconnector://{user}:{password}@{host}/{user}_{study_name}",
+        storage=f"mysql+mysqlconnector://{user}:{password}@{host}/{user}_{study_name}",
         load_if_exists=True,
         direction="minimize")
     study.optimize(lambda trial: objective(trial, pid), n_trials=optuna_trials)
