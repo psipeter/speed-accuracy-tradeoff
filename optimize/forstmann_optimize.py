@@ -45,8 +45,8 @@ def build_network(inputs, nActions=2, nNeurons=50, synapse=0.1, seed=0, ramp=1, 
         perception = nengo.Ensemble(nNeurons, nActions)
         accumulator = nengo.Ensemble(nNeurons, nActions, radius=rA)
         value = nengo.Ensemble(nNeurons, nActions, radius=net.threshold)
-        thresh = nengo.Ensemble(nNeurons, 1, radius=2*net.threshold)
-        gate = nengo.Ensemble(nNeurons, 1, encoders=ePos, intercepts=iPos, radius=2*net.threshold)
+        thresh = nengo.Ensemble(nNeurons, 1, radius=net.threshold)
+        gate = nengo.Ensemble(nNeurons, 1, encoders=ePos, intercepts=iPos)
         action = nengo.networks.EnsembleArray(nNeurons, nActions, encoders=ePos, intercepts=iPos)
         # Connections
         nengo.Connection(environment, perception)  # external inputs
@@ -56,8 +56,7 @@ def build_network(inputs, nActions=2, nNeurons=50, synapse=0.1, seed=0, ramp=1, 
         nengo.Connection(value, action.input)
         nengo.Connection(thr_input, thresh)  # external inputs
         # nengo.Connection(thresh, gate)
-        nengo.Connection(gate, action.ea_ensembles[0], transform=-1, seed=seed)  # inhibition via decision criteria
-        nengo.Connection(gate, action.ea_ensembles[1], transform=-1, seed=seed)  # inhibition via decision criteria
+        nengo.Connection(gate, action.input, transform=[[-1],[-1]], seed=seed)  # inhibition via decision criteria
         if w_or_d=='save':
             conn_accumulator = nengo.Connection(accumulator, accumulator, synapse=net.synapse, seed=seed) # recurrent cortical connection for accumulation    
             conn_threshold = nengo.Connection(thresh, gate, seed=seed)  # corticostriatal white matter
@@ -135,11 +134,11 @@ def get_kde_loss(simulated, empirical, emphases):
             kde_loss = 1000*np.sqrt(np.mean(np.square(estimate_emp - estimate_sim)))
             print('kde', kde_loss)
         total_loss += kde_loss
-        # error_sim = simulated.query("emphasis==@emphasis")['error'].mean()
-        # error_emp = empirical.query("emphasis==@emphasis")['error'].mean()
-        # error_loss = np.abs(error_sim - error_emp)
-        # print('error', error_loss)
-        # total_loss += error_loss
+        error_sim = simulated.query("emphasis==@emphasis")['error'].mean()
+        error_emp = empirical.query("emphasis==@emphasis")['error'].mean()
+        error_loss = 0.3*np.abs(error_sim - error_emp)
+        print('error', error_loss)
+        total_loss += error_loss
     return total_loss
 
 def objective(trial, pid):
@@ -151,14 +150,15 @@ def objective(trial, pid):
     threshold_speed = trial.suggest_float("threshold_speed", 0.01, 1.0, step=0.001)
     threshold_accuracy = trial.suggest_float("threshold_accuracy", 0.01, 1.0, step=0.001)
     relative = trial.suggest_float("relative", 0.01, 1.0, step=0.001)
-    dt_sample = trial.suggest_float("dt_sample", 0.01, 0.1, step=0.001)
-    sigma = trial.suggest_float("sigma", 0.01, 0.6, step=0.001)
+    # dt_sample = trial.suggest_float("dt_sample", 0.01, 0.1, step=0.001)
+    dt_sample = trial.suggest_categorical("dt_sample", [0.05])
+    sigma = trial.suggest_float("sigma", 0.3, 1.5, step=0.01)
     coherence = trial.suggest_categorical("coherence", [0.10])
     # coherence = trial.suggest_float("coherence", 0.01, 0.5, step=0.01)
 
-    nNeurons = 70 # trial.suggest_categorical("nNeurons", [500])
+    nNeurons = 50 # trial.suggest_categorical("nNeurons", [500])
     rA = 1.0  # trial.suggest_categorical("radius", [1.0])
-    max_rates = nengo.dists.Uniform(60, 80)
+    max_rates = nengo.dists.Uniform(10, 30)
     perception_seed = 0
     dt = 0.001
     tmin = 0.1
