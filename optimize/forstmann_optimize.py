@@ -138,7 +138,7 @@ def get_kde_loss(simulated, empirical, emphases):
         error_emp = empirical.query("emphasis==@emphasis")['error'].mean()
         error_loss = 0.3*np.abs(error_sim - error_emp)
         print('error', error_loss)
-        total_loss += error_loss
+        # total_loss += error_loss
     return total_loss
 
 def objective(trial, pid):
@@ -146,28 +146,29 @@ def objective(trial, pid):
     trials = 100
     emphases = ['speed', 'accuracy']
 
-    ramp = trial.suggest_float("ramp", 0.5, 2.0, step=0.001)
+    ramp = trial.suggest_float("ramp", 1.0, 2.0, step=0.001)
     threshold_speed = trial.suggest_float("threshold_speed", 0.01, 1.0, step=0.001)
     threshold_accuracy = trial.suggest_float("threshold_accuracy", 0.01, 1.0, step=0.001)
     relative = trial.suggest_float("relative", 0.01, 1.0, step=0.001)
     # dt_sample = trial.suggest_float("dt_sample", 0.01, 0.1, step=0.001)
     dt_sample = trial.suggest_categorical("dt_sample", [0.05])
-    sigma = trial.suggest_float("sigma", 0.3, 1.5, step=0.01)
-    coherence = trial.suggest_categorical("coherence", [0.10])
+    sigma = trial.suggest_float("sigma", 0.5, 1.0, step=0.01)
+    coherence = trial.suggest_categorical("coherence", [0.5])
     # coherence = trial.suggest_float("coherence", 0.01, 0.5, step=0.01)
 
     nNeurons = 50 # trial.suggest_categorical("nNeurons", [500])
     rA = 1.0  # trial.suggest_categorical("radius", [1.0])
-    max_rates = nengo.dists.Uniform(10, 30)
+    max_rates = nengo.dists.Uniform(15, 30)
     perception_seed = 0
     dt = 0.001
-    tmin = 0.1
+    tmin = 0.01
     tmax = 2
+    amin = 0.15
     
     columns = ['type', 'pid', 'age', 'emphasis', 'trial', 'error', "RT"]
     dfs = []
+    inputs = DotPerception(nActions=2, dt_sample=dt_sample, seed=perception_seed, sigma=sigma)
     for e, emphasis in enumerate(emphases):
-        inputs = DotPerception(nActions=2, dt_sample=dt_sample, seed=perception_seed, sigma=sigma)
         inputs.create(coherence=coherence)
         if emphasis=='speed': threshold = threshold_speed
         if emphasis=='accuracy': threshold = threshold_accuracy
@@ -180,7 +181,7 @@ def objective(trial, pid):
             while choice==None:
                 sim_young.run(dt)
                 tnow = sim_young.trange()[-1]
-                if np.any(sim_young.data[net_young.pAction][-1,:] > 0.01) and tnow>tmin:
+                if np.any(sim_young.data[net_young.pAction][-1,:] > amin) and tnow>tmin:
                     choice = np.argmax(sim_young.data[net_young.pAction][-1,:])
                     RT = tnow
                 if sim_young.trange()[-1] > tmax:
