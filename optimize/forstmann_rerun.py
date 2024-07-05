@@ -8,6 +8,7 @@ import scipy.io
 import sys
 import optuna
 import mysql.connector
+import json
 from scipy.stats import gaussian_kde
 from model import DotPerception
 
@@ -83,6 +84,65 @@ def build_network(inputs, nActions=2, nNeurons=50, synapse=0.1, seed=0, ramp=1, 
         net.conn_threshold = conn_threshold
 
     return net
+
+def age_weights(net, sim, w_or_d, method, degrade_accumulator, degrade_threshold, seed=0):
+    rng = np.random.RandomState(seed=seed)
+    if w_or_d=="d":
+        # grab decoders
+        d_acc = sim.data[net.conn_accumulator].weights.copy()  # decoders
+        d_thr = sim.data[net.conn_threshold].weights.copy()  # decoders
+        if method=='zero':
+            # choose random indices
+            idx_acc = rng.choice(range(d_acc.shape[1]), size=int(degrade_accumulator*d_acc.shape[1]), replace=False)
+            idx_thr = rng.choice(range(d_thr.shape[1]), size=int(degrade_threshold*d_thr.shape[1]), replace=False)
+            # set those indices to zero
+            d_acc[:,idx_acc] = 0
+            d_thr[:,idx_thr] = 0
+            return d_acc, d_thr
+        if method=='noise':
+            # add a normally-distributed random value to all weights
+            noise_acc = rng.normal(0, degrade_accumulator, size=d_acc.shape)
+            noise_thr = rng.normal(0, degrade_threshold, size=d_thr.shape)
+            d_acc += noise_acc
+            d_thr += noise_thr
+            return d_acc, d_thr            
+        if method=='shrink':
+            # shrink all decoders by a constant value
+            d_acc *= (1-degrade_accumulator)
+            d_thr *= (1-degrade_threshold)
+            return d_acc, d_thr   
+    if w_or_d=="w":
+        # grab decoders and encoders
+        d_acc = sim.data[net.conn_accumulator].weights.copy()  # decoders
+        d_thr = sim.data[net.conn_threshold].weights.copy()  # decoders
+        e_acc = sim.data[net.accumulator].encoders.copy()  # encoders
+        e_gate = sim.data[net.gate].encoders.copy()  # encoders
+        # compute weight matrices
+        w_acc = e_acc @ d_acc
+        w_thr = e_gate @ d_thr
+        if method=='zero':
+            # choose random indices by flattening weight matrix and picking uniformally
+            flat_acc = w_acc.ravel().copy()
+            flat_thr = w_thr.ravel().copy()
+            idx_acc = rng.choice(range(flat_acc.shape[0]), size=int(degrade_accumulator*flat_acc.shape[0]), replace=False)
+            idx_thr = rng.choice(range(flat_thr.shape[0]), size=int(degrade_threshold*flat_thr.shape[0]), replace=False)
+            # set those indices to zero, and reshape the weight matrix to its original shape
+            flat_acc[idx_acc] = 0
+            flat_thr[idx_thr] = 0
+            W_acc = flat_acc.reshape(w_acc.shape)
+            W_thr = flat_thr.reshape(w_thr.shape)
+            return W_acc, W_thr
+        if method=='noise':
+            noise_acc = rng.normal(0, degrade_accumulator, size=w_acc.shape)
+            noise_thr = rng.normal(0, degrade_threshold, size=w_thr.shape)
+            w_acc += noise_acc
+            w_thr += noise_thr
+            return w_acc, w_thr
+        if method=='shrink':
+            # shrink all weights by a constant value
+            w_acc *= (1-degrade_accumulator)
+            w_thr *= (1-degrade_threshold)
+            return w_acc, w_thr   
 
 pid = sys.argv[1]
 label = sys.argv[2]
