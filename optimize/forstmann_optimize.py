@@ -136,34 +136,33 @@ def get_kde_loss(simulated, empirical, emphases):
         total_loss += kde_loss
         error_sim = simulated.query("emphasis==@emphasis")['error'].mean()
         error_emp = empirical.query("emphasis==@emphasis")['error'].mean()
-        error_loss = 0.3*np.abs(error_sim - error_emp)
+        error_loss = 0.2*np.abs(error_sim - error_emp)
         print('error', error_loss)
         # total_loss += error_loss
     return total_loss
 
 def objective(trial, pid):
 
-    trials = 100
+    trials = 200
     emphases = ['speed', 'accuracy']
 
     ramp = trial.suggest_float("ramp", 1.0, 2.0, step=0.001)
     threshold_speed = trial.suggest_float("threshold_speed", 0.01, 1.0, step=0.001)
     threshold_accuracy = trial.suggest_float("threshold_accuracy", 0.01, 1.0, step=0.001)
     relative = trial.suggest_float("relative", 0.01, 1.0, step=0.001)
-    # dt_sample = trial.suggest_float("dt_sample", 0.01, 0.1, step=0.001)
-    dt_sample = trial.suggest_categorical("dt_sample", [0.05])
-    sigma = trial.suggest_float("sigma", 0.5, 1.0, step=0.01)
-    coherence = trial.suggest_categorical("coherence", [0.5])
-    # coherence = trial.suggest_float("coherence", 0.01, 0.5, step=0.01)
+    dt_sample = trial.suggest_float("dt_sample", 0.01, 0.1, step=0.001)
+    # dt_sample = trial.suggest_categorical("dt_sample", [0.05])
+    sigma = trial.suggest_float("sigma", 0.01, 0.6, step=0.01)
+    coherence = trial.suggest_categorical("coherence", [0.1])
 
-    nNeurons = 50 # trial.suggest_categorical("nNeurons", [500])
-    rA = 1.0  # trial.suggest_categorical("radius", [1.0])
-    max_rates = nengo.dists.Uniform(15, 30)
+    nNeurons = 500
+    rA = 1.0 
+    max_rates = nengo.dists.Uniform(60, 80)
     perception_seed = 0
     dt = 0.001
     tmin = 0.01
     tmax = 2
-    amin = 0.15
+    amin = 0.10
     
     columns = ['type', 'pid', 'age', 'emphasis', 'trial', 'error', "RT"]
     dfs = []

@@ -146,9 +146,13 @@ def age_weights(net, sim, w_or_d, method, degrade_accumulator, degrade_threshold
 
 pid = sys.argv[1]
 label = sys.argv[2]
-trials = 100
+trials = 200
 emphases = ['speed', 'accuracy']
 ages = ['young', 'old']
+degrade_accumulator = 0.15
+degrade_threshold = 0.0
+method='zero'
+w_or_d = 'd'
 
 nNeurons = 500
 rA = 1.0
@@ -169,7 +173,7 @@ relative = param['relative']
 dt_sample = param['dt_sample']
 sigma = param['sigma']
 coherence = param['coherence']
-
+print(pid, params)
 
 columns = ['type', 'pid', 'age', 'emphasis', 'trial', 'error', "RT"]
 dfs = []
@@ -184,9 +188,6 @@ for e, emphasis in enumerate(emphases):
         if 'young' in ages:
             net_young = build_network(inputs, w_or_d='save', nActions=2, nNeurons=nNeurons, rA=rA, seed=task_trial,
                                       max_rates=max_rates, ramp=ramp, threshold=threshold, relative=relative)
-            # net_young = build_network(inputs, w_or_d='save', nActions=nActions, nNeurons=nNeurons, rA=rA, seed=task_trial,
-            #                           max_rates=max_rates, ramp=ramp, threshold=threshold, relative=relative,
-            #                           perception_noise=1e-10, accumulator_noise=1e-10)
             sim_young = nengo.Simulator(net_young, progress_bar=False)
             choice = None
             while choice==None:
@@ -205,12 +206,8 @@ for e, emphasis in enumerate(emphases):
             # effectively "age" the model from a functional, young model to an impaired "elderly" model
             w_acc, w_thr = age_weights(net_young, sim_young, w_or_d, method, degrade_accumulator, degrade_threshold, seed=perception_seed)
             net_old = build_network(inputs, w_or_d=w_or_d, w_accumulator=w_acc, w_threshold=w_thr,
-                                    nActions=nActions, nNeurons=nNeurons, rA=rA, seed=task_trial,
+                                    nActions=2, nNeurons=nNeurons, rA=rA, seed=task_trial,
                                     max_rates=max_rates, ramp=ramp, threshold=threshold, relative=relative)
-            # net_old = build_network(inputs, w_or_d=w_or_d, w_accumulator=w_acc, w_threshold=w_thr,
-            #                         nActions=nActions, nNeurons=nNeurons, rA=rA, seed=task_trial,
-            #                         max_rates=max_rates, ramp=ramp, threshold=threshold, relative=relative,
-            #                         perception_noise=perception_noise, accumulator_noise=accumulator_noise)
             sim_old = nengo.Simulator(net_old, progress_bar=False)
             choice = None
             while choice==None:
