@@ -166,6 +166,7 @@ def age_weights(net, sim, w_or_d, method, degrade_accumulator, degrade_threshold
 
 pid = sys.argv[1]
 label = sys.argv[2]
+newlabel = sys.argv[3]
 trials = 200
 emphases = ['speed', 'accuracy']
 ages = ['young', 'old']
@@ -240,8 +241,8 @@ for e, emphasis in enumerate(emphases):
                 if sim_old.trange()[-1] > tmax:
                     choice = np.argmax(sim_old.data[net_old.pValue][-1,:])
                     RT = tnow
-                    error = 0 if choice==inputs.correct else 100
+            error = 0 if choice==inputs.correct else 100
             dfs.append(pd.DataFrame([['model', pid, 'old', emphasis, task_trial, error, RT]], columns=columns))
 
 data = pd.concat(dfs, ignore_index=True)
-data.to_pickle(f"data/forstmann_rerun_{pid}_{label}.pkl")
+data.to_pickle(f"data/forstmann_rerun_{pid}_{newlabel}.pkl")
