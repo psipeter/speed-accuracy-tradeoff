@@ -80,8 +80,9 @@ def objective(trial, pid):
         task_trial += 1
     simulated = pd.concat(dfs, ignore_index=True)
     empirical = pd.read_pickle("data/fiedler_trial.pkl").query("id==@pid & max_cues==@max_cues & dP==@dP")
-    loss = get_mean_loss(simulated, empirical)
-    loss = get_kde_loss(simulated, empirical, max_cues)
+    mean_loss = get_mean_loss(simulated, empirical)
+    kde_loss = get_kde_loss(simulated, empirical, max_cues)
+    loss = 0.3*mean_loss + kde_loss
     return loss
 
 
