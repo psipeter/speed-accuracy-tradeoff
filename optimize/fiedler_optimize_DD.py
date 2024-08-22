@@ -13,7 +13,7 @@ def run_DD(NDT, R, S, T, V, max_samples, rng, dt):
     zeros = np.zeros((int(NDT/dt)))
     drift_samples = rng.normal(R, V, size=max_samples)
     samples = np.hstack([zeros, S, drift_samples])
-    dv = np.cumsum(samples)
+    dv = np.cumsum(samples)[:max_samples]
     if np.any(np.abs(dv) >= T):
         RT = np.argwhere(np.abs(dv) >= T)[0][0]
         accuracy = 100 if dv[RT] >= T else 0
@@ -53,11 +53,12 @@ def get_loss(simulated, empirical, dPs, max_cues):
     return total_loss
 
 
-def objective(trial, pid, dPs, task_trials=500, max_cues=12, dt=1, rerun=False, params=None):
+def objective(trial, pid, dPs, task_trials=500, max_cues=12, dt=0.01, rerun=False, params=None):
     empirical = pd.read_pickle("data/fiedler_trial.pkl").query("max_cues==@max_cues & id==@pid")
     if not rerun:
         T = trial.suggest_float("T", 0.1, 10, step=0.001) # decision threshold for speed emphasis
-        mu_nd = trial.suggest_categorical("mu_nd", [0])  # mean of non-decision time distribution
+        mu_nd = trial.suggest_float("mu_nd", 0.01, max_cues, step=0.01)  # mean of non-decision time distribution
+        # mu_nd = trial.suggest_categorical("mu_nd", [0])  # mean of non-decision time distribution
         sigma_nd = trial.suggest_categorical("sigma_nd", [0])  # zero variance of non-decision time distribution
         mu_r0 = trial.suggest_float("mu_r0", 0.01, 0.5, step=0.01)  # R = mu_r0 * coherence    
         sigma_r0 = trial.suggest_float("sigma_r0", 0.01, 0.2, step=0.01)  # zero variance in mu_r0
@@ -77,7 +78,7 @@ def objective(trial, pid, dPs, task_trials=500, max_cues=12, dt=1, rerun=False, 
     perception_seed = 0
     network_seed = 0
     rng = np.random.RandomState(seed=network_seed)
-    max_samples = 2*max_cues
+    max_samples = int(2*max_cues/dt)
 
     # run task_trials iterations of the task, measuring simulated reaction times and accuracies
     columns = ['type', 'dP', 'trial', 'cues', 'accuracy', 'id']
@@ -89,7 +90,8 @@ def objective(trial, pid, dPs, task_trials=500, max_cues=12, dt=1, rerun=False, 
             S = rng.normal(mu_s, sigma_s)
             R = mu_r * dP
             accuracy, RT, dv = run_DD(NDT, R, S, T, V, max_samples, rng, dt)
-            dfs.append(pd.DataFrame([['DD', dP, t, RT, accuracy, pid]], columns=columns))
+            cues = np.ceil(RT*dt)
+            dfs.append(pd.DataFrame([['DD', dP, t, cues, accuracy, pid]], columns=columns))
 
     simulated = pd.concat(dfs, ignore_index=True)
     loss = get_loss(simulated, empirical, dPs, 2*max_cues)
@@ -101,7 +103,7 @@ if __name__ == '__main__':
 
     pid = int(sys.argv[1])
     dPs = [0.2]
-    optuna_trials = 500
+    optuna_trials = 1000
 
     host = "gra-dbaas1.computecanada.ca"
     user = "psipeter"
