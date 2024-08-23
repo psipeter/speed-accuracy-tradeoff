@@ -9,7 +9,8 @@ import json
 import sys
 from scipy.stats import gaussian_kde
 
-def run_DD(NDT, R, S, T, V, max_samples, rng, dt):
+def run_DD(NDT, R, S, T, V, tmax, dt, rng):
+    max_samples = int(tmax/dt)
     zeros = np.zeros((int(NDT/dt)))
     drift_samples = rng.normal(R, V, size=max_samples)
     samples = np.hstack([zeros, S, drift_samples])
@@ -53,18 +54,18 @@ def get_loss(simulated, empirical, dPs, max_cues):
     return total_loss
 
 
-def objective(trial, pid, dPs, task_trials=500, max_cues=12, dt=0.01, rerun=False, params=None):
+def objective(trial, pid, dPs=[0.2], experiment_time=2000, max_cues=12, dt=0.01, rerun=False, params=None):
     empirical = pd.read_pickle("data/fiedler_trial.pkl").query("max_cues==@max_cues & id==@pid")
     if not rerun:
         T = trial.suggest_float("T", 0.1, 10, step=0.001) # decision threshold for speed emphasis
-        mu_nd = trial.suggest_float("mu_nd", 0.01, max_cues, step=0.01)  # mean of non-decision time distribution
+        mu_nd = trial.suggest_float("mu_nd", 0.01, 2*max_cues, step=0.01)  # mean of non-decision time distribution
         # mu_nd = trial.suggest_categorical("mu_nd", [0])  # mean of non-decision time distribution
         sigma_nd = trial.suggest_categorical("sigma_nd", [0])  # zero variance of non-decision time distribution
         mu_r0 = trial.suggest_float("mu_r0", 0.01, 0.5, step=0.01)  # R = mu_r0 * coherence    
         sigma_r0 = trial.suggest_float("sigma_r0", 0.01, 0.2, step=0.01)  # zero variance in mu_r0
         mu_s = trial.suggest_categorical("mu_s", [0]) # mean of starting point distribution across trials is zero
         sigma_s = trial.suggest_float("sigma_s", 0.01, 0.3, step=0.01) # no variance in starting point
-        V = trial.suggest_float("V", 0.3, 1.0, step=0.01) # drift variability
+        V = trial.suggest_float("V", 0.01, 0.3, step=0.01) # drift variability
     else:
         T = params['T']
         mu_nd = params['mu_nd']
@@ -78,20 +79,22 @@ def objective(trial, pid, dPs, task_trials=500, max_cues=12, dt=0.01, rerun=Fals
     perception_seed = 0
     network_seed = 0
     rng = np.random.RandomState(seed=network_seed)
-    max_samples = int(2*max_cues/dt)
 
-    # run task_trials iterations of the task, measuring simulated reaction times and accuracies
-    columns = ['type', 'dP', 'trial', 'cues', 'accuracy', 'id']
+    columns = ['type', 'dP', 'trial', 'cues', 'accuracy', 'id', 'max_cues']
     dfs = []
     for dP in dPs:
-        for t in range(task_trials):
+        total_time = 0
+        task_trial = 0
+        while total_time < experiment_time:
             mu_r = rng.normal(mu_r0, sigma_r0)
             NDT = rng.normal(mu_nd, sigma_nd)
             S = rng.normal(mu_s, sigma_s)
             R = mu_r * dP
-            accuracy, RT, dv = run_DD(NDT, R, S, T, V, max_samples, rng, dt)
+            accuracy, RT, dv = run_DD(NDT, R, S, T, V, 2*max_cues, dt, rng)
             cues = np.ceil(RT*dt)
-            dfs.append(pd.DataFrame([['DD', dP, t, cues, accuracy, pid]], columns=columns))
+            dfs.append(pd.DataFrame([['DD', dP, task_trial, cues, accuracy, pid, max_cues]], columns=columns))
+            total_time += RT*dt
+            task_trial += 1
 
     simulated = pd.concat(dfs, ignore_index=True)
     loss = get_loss(simulated, empirical, dPs, 2*max_cues)
@@ -102,7 +105,6 @@ def objective(trial, pid, dPs, task_trials=500, max_cues=12, dt=0.01, rerun=Fals
 if __name__ == '__main__':
 
     pid = int(sys.argv[1])
-    dPs = [0.2]
     optuna_trials = 1000
 
     host = "gra-dbaas1.computecanada.ca"
@@ -114,7 +116,7 @@ if __name__ == '__main__':
         # storage=f"mysql+mysqlconnector://{user}:{password}@{host}/{user}_{study_name}",
         load_if_exists=True,
         direction="minimize")
-    study.optimize(lambda trial: objective(trial, pid, dPs), n_trials=optuna_trials)
+    study.optimize(lambda trial: objective(trial, pid), n_trials=optuna_trials)
     with open(f"data/fiedler_params_DD_{pid}.json", 'w') as f:
         json.dump(study.best_params, f, indent=1)  # save parameters
     objective(None, pid, dPs=[0.4, 0.2, 0.1], rerun=True, params=study.best_params)  # rerun and save data
