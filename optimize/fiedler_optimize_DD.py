@@ -54,17 +54,18 @@ def get_loss(simulated, empirical, dPs, max_cues):
     return total_loss
 
 
-def objective(trial, pid, dPs=[0.2], experiment_time=2400, max_cues=12, dt=1, rerun=False, params=None):
+def objective(trial, pid, dPs=[0.2], experiment_time=4000, max_cues=12, dt=0.01, t_cue=1, rerun=False, params=None):
     empirical = pd.read_pickle("data/fiedler_trial.pkl").query("max_cues==@max_cues & id==@pid")
     if not rerun:
-        T = trial.suggest_float("T", 0.001, 1, step=0.001) # decision threshold for speed emphasis
-        mu_nd = trial.suggest_float("mu_nd", 0, 2*max_cues, step=1)  # mean of non-decision time distribution
-        # mu_nd = trial.suggest_categorical("mu_nd", [0])  # mean of non-decision time distribution
+        T = trial.suggest_float("T", 0.1, 10, step=0.1) # decision threshold for speed emphasis
+        # mu_nd = trial.suggest_float("mu_nd", 0, 2*max_cues, step=1)  # mean of non-decision time distribution
+        mu_nd = trial.suggest_categorical("mu_nd", [0])  # mean of non-decision time distribution
         sigma_nd = trial.suggest_categorical("sigma_nd", [0])  # zero variance of non-decision time distribution
-        mu_r0 = trial.suggest_float("mu_r0", 0.01, 0.5, step=0.01)  # R = mu_r0 * dP    
-        sigma_r0 = trial.suggest_float("sigma_r0", 0.01, 0.2, step=0.01)
+        mu_r0 = trial.suggest_float("mu_r0", 0.001, 0.1, step=0.001)  # R = mu_r0 * dP    
+        sigma_r0 = trial.suggest_float("sigma_r0", 0.001, 0.1, step=0.001)
         mu_s = trial.suggest_categorical("mu_s", [0]) # mean of starting point distribution across trials is zero
-        sigma_s = trial.suggest_float("sigma_s", 0.01, 0.3, step=0.01) # no variance in starting point
+        # sigma_s = trial.suggest_float("sigma_s", 0.01, 0.3, step=0.01) # no variance in starting point
+        sigma_s = trial.suggest_categorical("sigma_s", [0]) # no variance in starting point
         V = trial.suggest_float("V", 0.01, 0.3, step=0.01) # drift variability
     else:
         T = params['T']
@@ -91,7 +92,8 @@ def objective(trial, pid, dPs=[0.2], experiment_time=2400, max_cues=12, dt=1, re
             S = rng.normal(mu_s, sigma_s)
             R = mu_r * dP
             accuracy, RT, dv = run_DD(NDT, R, S, T, V, 2*max_cues, dt, rng)
-            cues = np.ceil(RT*dt)
+            cues = np.ceil((RT*dt)/t_cue)
+            # print(RT, RT*dt, cues, accuracy, total_time)
             dfs.append(pd.DataFrame([['DD', dP, task_trial, cues, accuracy, pid, max_cues]], columns=columns))
             total_time += RT*dt
             task_trial += 1
