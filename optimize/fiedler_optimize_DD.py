@@ -9,7 +9,7 @@ import json
 import sys
 from scipy.stats import gaussian_kde
 
-def run_DD(NDT, R, S, T, V, tmax, dt, rng, tiebreak='proportional'):
+def run_DD(NDT, R, S, T, V, tmax, dt, rng, tiebreak='best'):
     max_samples = int(tmax/dt)
     zeros = np.zeros((int(NDT/dt)))
     drift_samples = rng.normal(R, V, size=max_samples)
@@ -64,20 +64,20 @@ def get_loss(simulated, empirical, dPs, max_cues):
     return total_loss
 
 
-def objective(trial, pid, dPs=[0.2], experiment_time=4000, max_cues=12, dt=0.1, t_cue=1, rerun=False, params=None):
+def objective(trial, pid, dPs=[0.2], experiment_time=400, max_cues=12, dt=0.001, t_cue=0.1, rerun=False, params=None):
     empirical = pd.read_pickle("data/fiedler_trial.pkl").query("max_cues==@max_cues & id==@pid")
     if not rerun:
         T = trial.suggest_float("T", 1, 10, step=0.1) # decision threshold for speed emphasis
         # mu_nd = trial.suggest_float("mu_nd", 0, 2*max_cues, step=1)  # mean of non-decision time distribution
         mu_nd = trial.suggest_categorical("mu_nd", [0])  # mean of non-decision time distribution
         sigma_nd = trial.suggest_categorical("sigma_nd", [0])  # zero variance of non-decision time distribution
-        mu_r0 = trial.suggest_float("mu_r0", 0.1, 0.3, step=0.001)  # R = mu_r0 * dP    
-        sigma_r0 = trial.suggest_float("sigma_r0", 0.01, 0.1, step=0.001)
+        mu_r0 = trial.suggest_float("mu_r0", 0.01, 0.03, step=0.001)  # R = mu_r0 * dP    
+        sigma_r0 = trial.suggest_float("sigma_r0", 0.001, 0.01, step=0.001)
         # sigma_r0 = trial.suggest_categorical("sigma_r0", [0])
         mu_s = trial.suggest_categorical("mu_s", [0]) # mean of starting point distribution across trials is zero
         sigma_s = trial.suggest_float("sigma_s", 0.1, 3.0, step=0.1) # no variance in starting point
         # sigma_s = trial.suggest_categorical("sigma_s", [0]) # no variance in starting point
-        V = trial.suggest_float("V", 0.2, 0.5, step=0.01) # drift variability
+        V = trial.suggest_float("V", 0.05, 0.07, step=0.001) # drift variability
     else:
         T = params['T']
         mu_nd = params['mu_nd']
@@ -102,7 +102,7 @@ def objective(trial, pid, dPs=[0.2], experiment_time=4000, max_cues=12, dt=0.1, 
             NDT = rng.normal(mu_nd, sigma_nd)
             S = rng.normal(mu_s, sigma_s)
             R = mu_r * dP
-            accuracy, RT, dv = run_DD(NDT, R, S, T, V, 2*max_cues, dt, rng)
+            accuracy, RT, dv = run_DD(NDT, R, S, T, V, 2*max_cues*t_cue, dt, rng)
             cues = np.ceil((RT*dt)/t_cue)
             # print(RT, RT*dt, cues, accuracy, total_time)
             dfs.append(pd.DataFrame([['DD', dP, task_trial, cues, accuracy, pid, max_cues]], columns=columns))
